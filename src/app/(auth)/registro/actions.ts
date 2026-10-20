@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
+import { isValidInviteCode } from "@/lib/registration";
 import { supabaseServer } from "@/lib/supabase/server";
 import { registerClinic } from "@/server/clinics";
 
@@ -12,6 +13,10 @@ export async function register(formData: FormData) {
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
   };
+  if (!isValidInviteCode(String(formData.get("inviteCode") ?? ""))) {
+    const message = "El código de invitación no es válido o el registro está cerrado.";
+    redirect(`/registro?error=${encodeURIComponent(message)}`);
+  }
   try {
     await registerClinic(input);
   } catch (error) {

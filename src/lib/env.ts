@@ -11,6 +11,8 @@ const groups = {
   supabaseAdmin: z.object({ SUPABASE_SECRET_KEY: z.string().min(1) }),
   app: z.object({ APP_URL: z.url() }),
   cron: z.object({ CRON_SECRET: z.string().min(16) }),
+  // Optional on purpose: without it, clinic registration is closed.
+  registration: z.object({ REGISTRATION_CODE: z.string().min(12).optional() }),
   crypto: z.object({
     TOKEN_ENC_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, {
       message: "must be 32 bytes, base64-encoded",

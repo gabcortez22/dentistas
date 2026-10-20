@@ -35,3 +35,7 @@ Found while building; the blueprint text was not rewritten.
 - Still outside the code: banco de datos registration, cross-border transfer notice, NTS 139 retention period and archive procedure, ARCO procedure (data export and cancellation), lawyer review.
 - Migration `20261020000016` was applied to the hosted Supabase project (16 rows in `public._migrations`).
 - `GET /api/patients/[id]/export` returns a JSON copy of a patient's data (ficha, consent, clinical entries, odontogram, charges) for administrators and dentists, through `openRecord` so each export is logged. Status of the whole checklist and questions for the lawyer: `docs/ley-29733.md`.
+
+## Clinic registration is closed by default
+
+- The blueprint left `/registro` public, so anyone could create a clinic and an admin. It now needs `REGISTRATION_CODE` (12+ characters): without it the page says "Registro cerrado", the login link is hidden and the server action refuses. With it, the form asks for the invite code (compared in constant time). Set it only in the environment of the deployment; share it only with whoever may create a clinic. `registerClinic` itself is unchanged.

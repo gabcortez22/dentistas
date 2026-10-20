@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { safeNext } from "@/lib/auth-paths";
+import { isRegistrationOpen } from "@/lib/registration";
 import { signIn } from "./actions";
 
 export default async function LoginPage({
@@ -51,11 +52,13 @@ export default async function LoginPage({
           Ingresar
         </button>
       </form>
-      <p className="mt-4 text-sm text-ink-muted">
-        <Link href="/registro" className="text-brand underline">
-          Registrar mi clínica
-        </Link>
-      </p>
+      {isRegistrationOpen() ? (
+        <p className="mt-4 text-sm text-ink-muted">
+          <Link href="/registro" className="text-brand underline">
+            Registrar mi clínica
+          </Link>
+        </p>
+      ) : null}
     </main>
   );
 }
