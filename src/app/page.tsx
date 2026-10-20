@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { buttonClass } from "@/app/_components/ui";
+
 export default function HomePage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-16">
@@ -5,6 +8,9 @@ export default function HomePage() {
       <p className="mt-3 text-ink-muted">
         Historias clínicas, agenda de citas, cotizaciones y cobros para tu clínica dental.
       </p>
+      <Link href="/login" className={`${buttonClass} mt-6 inline-flex items-center`}>
+        Iniciar sesión
+      </Link>
     </main>
   );
 }
