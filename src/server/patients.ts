@@ -199,8 +199,17 @@ const COLUMN: Record<string, string> = {
   originPlace: "origin_place",
 };
 
+const CLEARABLE = [...Object.keys(COLUMN), "phone", "guardianPhone"].filter(
+  (key) => key !== "lastName" && key !== "firstName",
+);
+
+/** An empty string in the patch clears an optional field (stored as null). */
 export async function updatePatient(actor: Actor, id: string, patch: unknown): Promise<Patient> {
-  const d = patientPatch.parse(patch);
+  const raw = (patch ?? {}) as Record<string, unknown>;
+  const cleared = CLEARABLE.filter((key) => raw[key] === "");
+  const d = patientPatch.parse(
+    Object.fromEntries(Object.entries(raw).filter(([k]) => !cleared.includes(k))),
+  );
   const sets: string[] = [];
   const values: unknown[] = [id, actor.clinicId];
   const add = (column: string, value: unknown) => {
@@ -210,6 +219,11 @@ export async function updatePatient(actor: Actor, id: string, patch: unknown): P
   for (const [key, column] of Object.entries(COLUMN)) {
     const value = (d as Record<string, unknown>)[key];
     if (value !== undefined) add(column, value);
+  }
+  for (const key of cleared) {
+    if (key === "phone") add("phone_e164", null);
+    else if (key === "guardianPhone") add("guardian_phone_e164", null);
+    else if (COLUMN[key]) add(COLUMN[key], null);
   }
   if (d.phone !== undefined) add("phone_e164", normalizePhonePE(d.phone));
   if (d.guardianPhone !== undefined) add("guardian_phone_e164", normalizePhonePE(d.guardianPhone));
