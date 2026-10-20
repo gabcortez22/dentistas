@@ -2,7 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
-import { archivePatient, createPatient, DuplicatePatientError } from "@/server/patients";
+import {
+  archivePatient,
+  createPatient,
+  DuplicatePatientError,
+  updatePatient,
+} from "@/server/patients";
 import { requireSession, userActor } from "@/server/session";
 
 const optional = (formData: FormData, key: string) => {
@@ -44,6 +49,46 @@ export async function createPatientAction(formData: FormData) {
           ? `Revisa los datos: ${error.issues.map((i) => `${i.path.join(".")} (${i.message})`).join("; ")}`
           : "No se pudo guardar al paciente.";
     redirect(`/pacientes/nuevo?error=${encodeURIComponent(message)}`);
+  }
+  redirect(`/pacientes/${id}`);
+}
+
+export async function updatePatientAction(formData: FormData) {
+  const ctx = await requireSession();
+  const id = String(formData.get("id") ?? "");
+  const text = (key: string) => String(formData.get(key) ?? "").trim();
+  const patch = {
+    lastName: text("lastName"),
+    firstName: text("firstName"),
+    birthDate: text("birthDate"),
+    sex: text("sex"),
+    birthPlace: text("birthPlace"),
+    maritalStatus: text("maritalStatus"),
+    educationLevel: text("educationLevel"),
+    occupation: text("occupation"),
+    address: text("address"),
+    email: text("email"),
+    religion: text("religion"),
+    race: text("race"),
+    originPlace: text("originPlace"),
+    guardianName: text("guardianName"),
+    phone: text("phone"),
+    guardianPhone: text("guardianPhone"),
+    whatsappOptIn: formData.get("whatsappOptIn") === "on",
+  };
+  if (patch.whatsappOptIn && !patch.phone) {
+    redirect(
+      `/pacientes/${id}/editar?error=${encodeURIComponent("El consentimiento de WhatsApp requiere un teléfono.")}`,
+    );
+  }
+  try {
+    await updatePatient(userActor(ctx), id, patch);
+  } catch (error) {
+    const message =
+      error instanceof ZodError
+        ? `Revisa los datos: ${error.issues.map((i) => `${i.path.join(".")} (${i.message})`).join("; ")}`
+        : "No se pudo guardar los cambios.";
+    redirect(`/pacientes/${id}/editar?error=${encodeURIComponent(message)}`);
   }
   redirect(`/pacientes/${id}`);
 }

@@ -8,6 +8,7 @@ import {
   DuplicatePatientError,
   getPatient,
   searchPatients,
+  updatePatient,
 } from "@/server/patients";
 import { closePool, pool, seedClinic } from "./helpers";
 
@@ -94,6 +95,22 @@ describe("patients", () => {
       base({ religion: "Católica", race: "Mestiza", originPlace: "Cusco" }),
     );
     expect([p.religion, p.race, p.originPlace]).toEqual(["Católica", "Mestiza", "Cusco"]);
+  });
+
+  it("edits a patient, clears an emptied optional field and keeps the document", async () => {
+    const { actor } = await actorOf();
+    const p = await createPatient(actor, base({ phone: "987654321", occupation: "Docente" }));
+    const edited = await updatePatient(actor, p.id, {
+      lastName: "Quispe",
+      occupation: "",
+      phone: "",
+      whatsappOptIn: false,
+    });
+    expect(edited.lastName).toBe("Quispe");
+    expect(edited.occupation).toBeNull();
+    expect(edited.phoneE164).toBeNull();
+    expect(edited.docNumber).toBe(p.docNumber);
+    await expect(updatePatient(actor, p.id, { firstName: "" })).rejects.toBeInstanceOf(ZodError);
   });
 
   it("search is case-insensitive over names and document, limited to the clinic", async () => {

@@ -48,6 +48,14 @@ export default async function PacientePage({ params }: { params: Promise<{ id: s
           </Link>
         ) : null}
         {!p.archivedAt ? (
+          <Link
+            href={`/pacientes/${p.id}/editar`}
+            className={`${secondaryButtonClass} inline-flex items-center`}
+          >
+            Editar datos
+          </Link>
+        ) : null}
+        {!p.archivedAt ? (
           <form action={archivePatientAction}>
             <input type="hidden" name="id" value={p.id} />
             <button type="submit" className={secondaryButtonClass}>
