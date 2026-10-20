@@ -1,0 +1,600 @@
+[
+  {
+    "id": "E1-T1",
+    "title": "Esqueleto de la app y endpoint de salud",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm install --frozen-lockfile` runs THE SYSTEM SHALL exit 0 and leave `pnpm-lock.yaml` unchanged.",
+      "WHEN `pnpm typecheck` and `pnpm lint` run with the `blueprints/` directory present in the tree THE SYSTEM SHALL exit 0 with zero errors and zero warnings.",
+      "WHEN `pnpm test:unit tests/unit/health.test.ts` runs THE SYSTEM SHALL pass a test asserting that the health handler answers status 200 with the JSON body `{ \"status\": \"ok\" }`.",
+      "WHEN `pnpm build` has completed and `bash scripts/serve-check.sh` runs THE SYSTEM SHALL start the production server, receive exactly `{\"status\":\"ok\"}` from `/api/health`, and stop the server."
+    ],
+    "verify": [
+      "pnpm install --frozen-lockfile",
+      "git diff --quiet -- pnpm-lock.yaml",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm test:unit tests/unit/health.test.ts",
+      "pnpm build",
+      "bash scripts/serve-check.sh"
+    ],
+    "checkpoint": "step-01-scaffold",
+    "files": [
+      "src/app/layout.tsx",
+      "src/app/page.tsx",
+      "src/app/globals.css",
+      "src/app/api/health/route.ts",
+      "tests/unit/health.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T2",
+    "title": "Base de datos: clínicas, membresías, RLS y capa de acceso",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/foundation.test.ts` runs against an empty `dentistas_test` database THE SYSTEM SHALL apply the foundation migration and pass all 7 tests in that file.",
+      "WHEN a user of clinic A queries `clinics` or `memberships` under the `authenticated` role THE SYSTEM SHALL return only clinic A rows, and WHEN a non-admin inserts a membership THE SYSTEM SHALL reject it with a row-level-security error.",
+      "WHEN `authenticated` attempts `DELETE` or `TRUNCATE` on any table THE SYSTEM SHALL refuse with `permission denied`, and `anon` SHALL have no `SELECT` on `clinics`.",
+      "WHEN `getEnv('core')` runs without `DATABASE_URL` THE SYSTEM SHALL throw an error naming the group `core` and the variable, and WHEN no later-step variable is set THE SYSTEM SHALL still load `core` successfully.",
+      "WHEN `pnpm db:migrate` runs a second time against an already-migrated database THE SYSTEM SHALL exit 0 and print `up to date`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:unit tests/unit/env.test.ts",
+      "pnpm test:db tests/db/foundation.test.ts",
+      "DATABASE_URL=postgres://postgres:postgres@localhost:54329/dentistas_test pnpm db:migrate | grep -qx 'up to date'",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-02-tenancy-db",
+    "files": [
+      "supabase/migrations/20261020000001_foundation.sql",
+      "src/lib/env.ts",
+      "src/lib/db.ts",
+      "tests/unit/env.test.ts",
+      "tests/db/foundation.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T3",
+    "title": "Autenticación: proxy, sesión y pantalla de ingreso",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [
+      "E1-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `isPublicPath` is called with `/`, `/login`, `/registro`, `/api/health`, `/api/whatsapp/webhook` or `/api/cron/tick` THE SYSTEM SHALL return true, and WHEN called with `/pacientes`, `/api/availability`, `/loginx` or `/api/cronjob` THE SYSTEM SHALL return false.",
+      "WHEN `safeNext` receives `//evil.com`, `https://evil.com`, `/\\evil.com` or null THE SYSTEM SHALL return the fallback `/pacientes`, and WHEN it receives `/agenda?dia=1` THE SYSTEM SHALL return it unchanged.",
+      "WHEN the proxy runs without `NEXT_PUBLIC_SUPABASE_URL` and a request targets a private path THE SYSTEM SHALL answer 503 (fail closed), and WHEN the path is public THE SYSTEM SHALL answer 200.",
+      "WHEN `pnpm build` runs THE SYSTEM SHALL exit 0 and the route list SHALL include `/login`."
+    ],
+    "verify": [
+      "pnpm test:unit tests/unit/auth-paths.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build > \"${TMPDIR:-/tmp}/dentistas-build.log\" 2>&1 && grep -q '/login' \"${TMPDIR:-/tmp}/dentistas-build.log\""
+    ],
+    "checkpoint": "step-03-auth-session",
+    "files": [
+      "src/lib/auth-paths.ts",
+      "src/lib/supabase/server.ts",
+      "src/proxy.ts",
+      "src/app/(auth)/login/**",
+      "tests/unit/auth-paths.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T4",
+    "title": "Registro de clínica, equipo y roles",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [
+      "E1-T3"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `registerClinic` runs with valid input and a fake `AuthAdmin` THE SYSTEM SHALL create one `clinics` row and one `memberships` row with role `admin` for the new user, and return `{ clinicId, userId, membershipId }`.",
+      "WHEN the database transaction of `registerClinic` fails after the auth user was created THE SYSTEM SHALL call `AuthAdmin.deleteUser` with that user's id and rethrow the original error.",
+      "WHEN a non-admin calls `addMember` THE SYSTEM SHALL throw `ForbiddenError` and SHALL NOT call `AuthAdmin.createUser`.",
+      "WHEN the only active admin of a clinic is deactivated THE SYSTEM SHALL throw `LastAdminError` and leave `memberships.active = true`.",
+      "WHEN `membershipForUser` runs for a user whose membership is inactive THE SYSTEM SHALL return null.",
+      "WHEN `registerClinic` receives a password shorter than 10 characters THE SYSTEM SHALL throw a `ZodError` naming `password` and create nothing."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/clinics.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-04-clinics-members",
+    "files": [
+      "src/server/session.ts",
+      "src/server/clinics.ts",
+      "src/app/(auth)/registro/**",
+      "src/app/(app)/**",
+      "tests/db/clinics.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T5",
+    "title": "Pacientes: alta, búsqueda y archivo",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [
+      "E1-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `createPatient` receives document type DNI, number `12345678` and the phone `987 654 321`, `+51 987-654-321` or `51987654321` THE SYSTEM SHALL store `phone_e164 = '+51987654321'` and `hc_number = '12345678'`, and WHEN the phone is `12345` THE SYSTEM SHALL throw a `ZodError` naming `phone`.",
+      "WHEN a DNI is not exactly 8 digits THE SYSTEM SHALL throw a `ZodError` naming `docNumber` and insert no row.",
+      "WHEN `createPatient` is called twice with the same document type and number in one clinic THE SYSTEM SHALL throw `DuplicatePatientError`, and WHEN the same document is registered in another clinic THE SYSTEM SHALL succeed.",
+      "WHEN `whatsappOptIn` is true without a phone THE SYSTEM SHALL reject with a `ZodError`, and WHEN it is true with a phone THE SYSTEM SHALL set `whatsapp_opt_in_at` to the current time.",
+      "WHEN `searchPatients` receives the text `pere` THE SYSTEM SHALL return patients whose last name, first name or document number contains it (case-insensitive), only from the actor's clinic.",
+      "WHEN `archivePatient` runs THE SYSTEM SHALL set `archived_at`, exclude that patient from the default search, and keep the row."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/patients.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-05-patients",
+    "files": [
+      "supabase/migrations/20261020000002_patients.sql",
+      "src/lib/phone.ts",
+      "src/server/patients.ts",
+      "src/app/(app)/pacientes/**",
+      "tests/db/patients.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E1-T6",
+    "title": "Historia clínica y odontograma (solo se agrega)",
+    "epic": "01-fundacion-pacientes-historia",
+    "dependencies": [
+      "E1-T5"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/clinical.test.ts` runs THE SYSTEM SHALL pass all 6 tests, proving that assistants cannot read clinical entries, that updating or deleting an entry is refused with `append-only`, and that invalid FDI teeth are rejected.",
+      "WHEN `addEntry` receives a valid `anamnesis` body THE SYSTEM SHALL insert one `clinical_entries` row authored by the actor's membership, and WHEN the body fails its zod schema THE SYSTEM SHALL throw a `ZodError` and insert nothing.",
+      "WHEN `openRecord` runs THE SYSTEM SHALL insert exactly one `record_access_log` row for the actor's membership and that patient, per call.",
+      "WHEN an actor with role `assistant` calls `openRecord` or `addEntry` THE SYSTEM SHALL throw `ForbiddenError` and write no log row.",
+      "WHEN `correctEntry` runs THE SYSTEM SHALL insert a `nota_correccion` row whose `corrects_entry_id` is the original entry, and the original row SHALL remain byte-identical.",
+      "WHEN `currentOdontogram` runs after two marks on the same tooth and surface THE SYSTEM SHALL return only the later mark for that tooth and surface."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/clinical.test.ts",
+      "pnpm test:db tests/db/clinical-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-06-clinical-record",
+    "files": [
+      "supabase/migrations/20261020000003_clinical.sql",
+      "src/server/clinical.ts",
+      "src/app/(app)/pacientes/[id]/historia/**",
+      "tests/db/clinical.test.ts",
+      "tests/db/clinical-service.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T1",
+    "title": "Motor de disponibilidad (función pura)",
+    "epic": "02-agenda-recordatorios",
+    "dependencies": [
+      "E1-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `generateSlots` expands a Monday 09:00-12:00 rule for `America/Lima` with 30-minute slots THE SYSTEM SHALL return 6 slots, the first starting at `2027-03-01T14:00:00.000Z`.",
+      "WHEN a booking, an external busy block or a `block` exception overlaps a slot THE SYSTEM SHALL omit that slot, and WHEN an `open` exception adds hours outside the rules THE SYSTEM SHALL offer slots inside them.",
+      "WHEN `minNoticeMinutes`, `maxAdvanceDays` or a rule's `validFrom`/`validUntil` exclude a time THE SYSTEM SHALL not offer it.",
+      "WHEN the zone is `America/Lima`, `Asia/Kolkata`, `America/Santiago` or `UTC` THE SYSTEM SHALL start the first Monday slot at local 09:00 in that zone, and across the Santiago DST change THE SYSTEM SHALL keep wall-clock 09:00 while the UTC hour changes.",
+      "WHEN a working window spans the Madrid spring-forward gap (2027-03-28) THE SYSTEM SHALL offer no slot inside the non-existent hour, and WHEN it spans the fall-back repeated hour (2027-10-31) THE SYSTEM SHALL offer each real hour exactly once.",
+      "WHEN `generateSlots` is called THE SYSTEM SHALL not mutate its input and SHALL not read the clock (the caller passes `now`)."
+    ],
+    "verify": [
+      "pnpm test:unit tests/unit/generate-slots.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-07-availability-engine",
+    "files": [
+      "src/lib/availability/generate-slots.ts",
+      "tests/unit/generate-slots.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T2",
+    "title": "Citas: reservas sin doble reserva y servicio de agenda",
+    "epic": "02-agenda-recordatorios",
+    "dependencies": [
+      "E1-T2",
+      "E1-T5",
+      "E2-T1"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/booking.test.ts` runs THE SYSTEM SHALL pass, including the test in which 50 concurrent inserts of one slot for one dentist yield exactly 1 success and 49 `exclusion_violation` (SQLSTATE 23P01) failures.",
+      "WHEN `loadSlots` runs for a dentist with a Monday 09:00-12:00 rule, no bookings, and a 30-minute duration THE SYSTEM SHALL return 6 slots for the next Monday in `America/Lima`.",
+      "WHEN `bookAppointment` receives a slot returned by `loadSlots` THE SYSTEM SHALL insert one `confirmed` appointment and that slot SHALL no longer appear in `loadSlots`.",
+      "WHEN `bookAppointment` receives a time outside the dentist's working hours THE SYSTEM SHALL throw `OutsideAvailabilityError` and insert nothing.",
+      "WHEN 20 `bookAppointment` calls for the same slot run concurrently THE SYSTEM SHALL resolve exactly one and reject the other 19 with `SlotTakenError`.",
+      "WHEN `rescheduleAppointment` targets a free slot THE SYSTEM SHALL cancel the old row and insert a new `confirmed` row with `rescheduled_from_id` set, and WHEN the new slot is taken THE SYSTEM SHALL throw `SlotTakenError` and leave the old appointment `confirmed`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/booking.test.ts",
+      "pnpm test:db tests/db/appointments-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-08-appointments",
+    "files": [
+      "supabase/migrations/20261020000004_scheduling.sql",
+      "src/server/availability.ts",
+      "src/server/appointments.ts",
+      "tests/db/booking.test.ts",
+      "tests/db/appointments-service.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T3",
+    "title": "Agenda: horarios del dentista y pantalla de citas",
+    "epic": "02-agenda-recordatorios",
+    "dependencies": [
+      "E2-T2",
+      "E1-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `setWeeklyRules` replaces a dentist's rules THE SYSTEM SHALL, in one transaction, set `valid_until` on the open rules to the day before today and insert the new rules with `valid_from` today, leaving no gap and no deletion.",
+      "WHEN a dentist calls `setWeeklyRules` for another dentist THE SYSTEM SHALL throw `ForbiddenError`, and WHEN an admin does THE SYSTEM SHALL succeed, and WHEN an assistant does THE SYSTEM SHALL throw `ForbiddenError`.",
+      "WHEN `addBlockException` covers part of a working day THE SYSTEM SHALL make `loadSlots` return fewer slots for that day.",
+      "WHEN `GET /api/availability` is called with a valid session and `dentist`, `from`, `to` and `minutes` THE SYSTEM SHALL answer 200 with `{ slots: [{ startsAt, endsAt }] }` in ISO UTC strings.",
+      "WHEN `GET /api/availability` is called without a session THE SYSTEM SHALL answer 401, and WHEN `minutes` is missing or not between 5 and 480 THE SYSTEM SHALL answer 400."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/schedules.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-09-agenda-ui",
+    "files": [
+      "src/server/schedules.ts",
+      "src/app/api/availability/route.ts",
+      "src/app/(app)/agenda/**",
+      "src/app/(app)/configuracion/horarios/**",
+      "tests/db/schedules.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T4",
+    "title": "Recordatorios por WhatsApp (con simulador) y cron",
+    "epic": "02-agenda-recordatorios",
+    "dependencies": [
+      "E2-T2",
+      "E1-T5"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/reminders.test.ts` runs THE SYSTEM SHALL pass, proving that a confirmed appointment 72 hours away gets pending `h24` and `h2` reminders due 24 h and 2 h before it, that one 10 hours away gets only `h2`, that cancelling skips pending reminders, and that a `sent` reminder is not reset.",
+      "WHEN `runDueReminders` runs for a due reminder whose patient has `whatsapp_opt_in = true` THE SYSTEM SHALL send the template `recordatorio_cita` with 5 parameters through the injected sender, insert one outbound `whatsapp_messages` row, and set the reminder `sent`.",
+      "WHEN the patient has no opt-in or no phone THE SYSTEM SHALL mark the reminder `skipped` and SHALL NOT call the sender.",
+      "WHEN the sender throws THE SYSTEM SHALL increment `attempts` and keep the reminder `pending` until the third failure, after which it SHALL be `failed` with `last_error` set.",
+      "WHEN two `runDueReminders` calls run concurrently over the same due reminders THE SYSTEM SHALL send each reminder exactly once.",
+      "WHEN `POST /api/cron/tick` receives a missing or wrong bearer token THE SYSTEM SHALL answer 401 and process nothing, and WHEN it receives `Authorization: Bearer <CRON_SECRET>` THE SYSTEM SHALL answer 200 with a JSON summary."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/reminders.test.ts",
+      "pnpm test:db tests/db/reminders-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-10-reminders",
+    "files": [
+      "supabase/migrations/20261020000005_reminders.sql",
+      "src/lib/whatsapp/client.ts",
+      "src/server/reminders.ts",
+      "src/app/api/cron/**",
+      "tests/db/reminders*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E2-T5",
+    "title": "Google Calendar: conexión, publicación de citas y bloqueos",
+    "epic": "02-agenda-recordatorios",
+    "dependencies": [
+      "E2-T2",
+      "E2-T4"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `encryptToken` encrypts the same plaintext twice THE SYSTEM SHALL produce two different `v1:` ciphertexts that both decrypt to the plaintext, and WHEN a ciphertext byte is altered THE SYSTEM SHALL throw on `decryptToken`, and WHEN the `authenticated` role selects `refresh_token_enc` from `google_connections` THE SYSTEM SHALL fail with `permission denied` while selecting `google_email` and `status` succeeds for the connection's owner.",
+      "WHEN `verifyState` receives a state signed by `signState` within its lifetime THE SYSTEM SHALL return the membership id, and WHEN it is expired or tampered THE SYSTEM SHALL throw.",
+      "WHEN `runGoogleSync` runs with a fake `fetch` and an active connection THE SYSTEM SHALL create one Calendar event per `confirmed` appointment that has no `google_event_id`, store the returned id, and WHEN it runs again THE SYSTEM SHALL create no new event.",
+      "WHEN an appointment with a `google_event_id` is `cancelled` THE SYSTEM SHALL issue one DELETE for that event and clear `google_event_id`.",
+      "WHEN the fake free/busy response lists busy blocks THE SYSTEM SHALL replace that dentist's `external_busy` rows with them, and `loadSlots` SHALL stop offering overlapping slots.",
+      "WHEN Google answers `invalid_grant` while refreshing the token THE SYSTEM SHALL set the connection `revoked`, record `last_error`, and continue with the other connections without throwing."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/google.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-11-google-calendar",
+    "files": [
+      "supabase/migrations/20261020000006_google.sql",
+      "src/lib/google/**",
+      "src/app/api/google/**",
+      "src/app/(app)/configuracion/google/**",
+      "tests/db/google.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T1",
+    "title": "Catálogo de tratamientos y cotizaciones",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E1-T5",
+      "E1-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/quotes.test.ts` runs THE SYSTEM SHALL pass all 4 tests: sequential per-clinic numbers, forward-only status changes, role-limited reads, and an admin-only treatment catalog.",
+      "WHEN `quoteTotals` receives items `2 x 5000` and `1 x 3000` cents with a discount of 1000 THE SYSTEM SHALL return subtotal 13000, discount 1000 and total 12000, and WHEN the discount exceeds the subtotal THE SYSTEM SHALL throw `InvalidDiscountError`.",
+      "WHEN `createQuote` runs twice in one clinic THE SYSTEM SHALL assign numbers 1 and 2, and the quote SHALL start as `draft` with `valid_until` defaulting to 30 days from today in `America/Lima`.",
+      "WHEN `updateDraftQuote` runs on a quote whose status is not `draft` THE SYSTEM SHALL throw `QuoteLockedError` and change nothing.",
+      "WHEN `expireOverdueQuotes` runs THE SYSTEM SHALL set `expired` on every `draft` or `sent` quote whose `valid_until` is before today in Lima and leave `accepted` and `rejected` quotes untouched.",
+      "WHEN an `assistant` calls `createQuote` or `listQuotes` THE SYSTEM SHALL throw `ForbiddenError`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/quotes.test.ts",
+      "pnpm test:db tests/db/quotes-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-12-quotes",
+    "files": [
+      "supabase/migrations/20261020000007_quotes.sql",
+      "src/lib/money.ts",
+      "src/server/quotes.ts",
+      "src/app/(app)/cotizaciones/**",
+      "tests/db/quotes*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T2",
+    "title": "PDF de la cotización",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E3-T1"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `renderQuotePdf` receives a quote with 3 items THE SYSTEM SHALL return a Buffer whose first 5 bytes are `%PDF-` and whose length exceeds 1000 bytes.",
+      "WHEN `renderQuotePdf` receives a quote with 0 items THE SYSTEM SHALL still return a valid PDF Buffer.",
+      "WHEN `GET /api/quotes/<id>/pdf` is called without a session THE SYSTEM SHALL answer 401.",
+      "WHEN it is called by an `assistant`, or for a quote of another clinic, THE SYSTEM SHALL answer 403 or 404 respectively and return no PDF bytes.",
+      "WHEN it is called by a dentist of the quote's clinic THE SYSTEM SHALL answer 200 with `Content-Type: application/pdf` and `Content-Disposition: inline; filename=\"cotizacion-<number>.pdf\"`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:unit tests/unit/quote-pdf.test.ts",
+      "pnpm test:db tests/db/quote-pdf-route.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-13-quote-pdf",
+    "files": [
+      "src/lib/pdf/quote-document.tsx",
+      "src/app/api/quotes/[id]/pdf/route.ts",
+      "tests/unit/quote-pdf.test.ts",
+      "tests/db/quote-pdf-route.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T3",
+    "title": "Registro de cobros y saldos",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E3-T1",
+      "E2-T2"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/charges.test.ts` runs THE SYSTEM SHALL pass all 4 tests: balance arithmetic, voiding, immutability, and role limits.",
+      "WHEN `recordCharge` targets an `accepted` quote with total 9000 and amount 3000 THE SYSTEM SHALL insert the charge and `patientBalance` SHALL report a 6000 balance for that patient.",
+      "WHEN `recordCharge` targets a quote that is not `accepted`, or an amount above the remaining balance, THE SYSTEM SHALL throw `OverpaymentError` or `QuoteNotAcceptedError` respectively and insert nothing.",
+      "WHEN two `recordCharge` calls of 6000 each run concurrently against a remaining balance of 9000 THE SYSTEM SHALL insert exactly one and reject the other with `OverpaymentError`.",
+      "WHEN an admin calls `voidCharge` THE SYSTEM SHALL insert a `charge_voids` row, the balance SHALL increase by the charge amount, and the charge row SHALL remain; WHEN a non-admin calls it THE SYSTEM SHALL throw `ForbiddenError`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/charges.test.ts",
+      "pnpm test:db tests/db/charges-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-14-charges",
+    "files": [
+      "supabase/migrations/20261020000008_charges.sql",
+      "src/server/charges.ts",
+      "src/app/(app)/cobros/**",
+      "tests/db/charges*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T4",
+    "title": "Control de gastos y resumen mensual",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E3-T3"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `pnpm test:db tests/db/expenses.test.ts` runs THE SYSTEM SHALL pass all 3 tests: admin-only access, the monthly net using Lima calendar months with voided rows excluded, and immutability.",
+      "WHEN an admin calls `recordExpense` with a valid category, amount and date THE SYSTEM SHALL insert one expense and `listExpenses` SHALL return it.",
+      "WHEN a dentist or assistant calls `recordExpense`, `voidExpense`, `listExpenses` or `monthlySummary` THE SYSTEM SHALL throw `ForbiddenError`.",
+      "WHEN `voidExpense` runs THE SYSTEM SHALL insert an `expense_voids` row, the expense SHALL disappear from `monthlySummary` totals, and the expense row SHALL remain.",
+      "WHEN `monthlySummary` runs over a month with income and expenses THE SYSTEM SHALL return `incomeCents`, `expenseCents` and `netCents = income - expense` for that month."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/expenses.test.ts",
+      "pnpm test:db tests/db/expenses-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-15-expenses",
+    "files": [
+      "supabase/migrations/20261020000009_expenses.sql",
+      "src/server/expenses.ts",
+      "src/app/(app)/gastos/**",
+      "src/app/(app)/resumen/**",
+      "tests/db/expenses*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T5",
+    "title": "Agente de WhatsApp: herramientas, bucle y salvaguardas",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E2-T2",
+      "E3-T3",
+      "E2-T4"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN the scripted model calls `book_appointment` without a proposal created in an earlier turn THE SYSTEM SHALL return an error tool result and create no appointment.",
+      "WHEN the scripted model calls `propose_appointment`, the patient replies in a later turn, and the model then calls `book_appointment` with the proposal id THE SYSTEM SHALL create exactly one `confirmed` appointment with source `whatsapp` and consume the proposal; a second `book_appointment` with the same id SHALL fail.",
+      "WHEN the model calls a tool outside the allow-list, or arguments that fail their zod schema, THE SYSTEM SHALL return an error tool result and continue the loop without throwing.",
+      "WHEN the loop would exceed 8 model calls THE SYSTEM SHALL stop, return the fixed fallback text, and set the conversation status to `handoff`.",
+      "WHEN `handoff_to_human` is called THE SYSTEM SHALL set the conversation to `handoff` and every later `runAgent` call SHALL return null without calling the model.",
+      "WHEN `get_balance` or `cancel_appointment` runs on a conversation whose patient is not identified THE SYSTEM SHALL return an error tool result, and the allow-list SHALL contain exactly the 8 documented tools and no tool that reads clinical entries."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/agent-tools.test.ts",
+      "pnpm test:db tests/db/agent-loop.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-16-agent-core",
+    "files": [
+      "supabase/migrations/20261020000010_agent.sql",
+      "src/lib/agent/**",
+      "src/server/agent-tools.ts",
+      "tests/db/agent*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T6",
+    "title": "WhatsApp entrante: webhook, simulador y derivación",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E3-T5"
+    ],
+    "priority": "p0",
+    "acceptance": [
+      "WHEN `GET /api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=<token>&hub.challenge=abc` is called with the configured token THE SYSTEM SHALL answer 200 with the body `abc`, and WHEN the token is wrong THE SYSTEM SHALL answer 403.",
+      "WHEN `POST /api/whatsapp/webhook` carries an invalid `X-Hub-Signature-256` in cloud mode THE SYSTEM SHALL answer 401 and store no message.",
+      "WHEN the same inbound message id is delivered twice THE SYSTEM SHALL store exactly one `whatsapp_messages` row and run the agent once.",
+      "WHEN a payload names a `phone_number_id` that belongs to no clinic THE SYSTEM SHALL answer 200 and store nothing.",
+      "WHEN `processInbound` runs with a scripted model THE SYSTEM SHALL send the assistant reply through the injected sender and mark the message `processed`, and WHEN the conversation is in `handoff` THE SYSTEM SHALL send nothing.",
+      "WHEN `POST /api/whatsapp/cron` runs with the cron bearer token THE SYSTEM SHALL process every inbound message that has stayed `received` for more than 60 seconds."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/inbound.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build"
+    ],
+    "checkpoint": "step-17-whatsapp-inbound",
+    "files": [
+      "src/app/api/whatsapp/**",
+      "src/server/inbound.ts",
+      "src/app/(app)/simulador/**",
+      "tests/db/inbound*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E3-T7",
+    "title": "CI, datos de demostración y entrega",
+    "epic": "03-finanzas-agente-entrega",
+    "dependencies": [
+      "E3-T6",
+      "E3-T4",
+      "E2-T5",
+      "E3-T2",
+      "E2-T3"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `seedDemo` runs with a fake `AuthAdmin` on an empty test database THE SYSTEM SHALL create 1 clinic with 1 admin, 2 dentists and 1 assistant, 8 fake patients whose DNI start with `0000`, weekday availability rules for both dentists, and 5 catalog treatments.",
+      "WHEN `seedDemo` runs a second time on the same clinic THE SYSTEM SHALL create no duplicate rows (patient count stays 8, member count stays 4).",
+      "WHEN `.github/workflows/ci.yml` is read THE SYSTEM SHALL contain steps running `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build`, and a `postgres:16` service on port 5432.",
+      "WHEN `.github/workflows/cron.yml` is read THE SYSTEM SHALL contain a schedule of `*/5 * * * *` and calls to `/api/cron/tick`, `/api/google/cron` and `/api/whatsapp/cron` with the `CRON_SECRET` bearer token taken from repository secrets.",
+      "WHEN the global acceptance gate of §20.1 runs on the finished tree THE SYSTEM SHALL exit 0 for every command in it."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/seed.test.ts",
+      "grep -q 'frozen-lockfile' .github/workflows/ci.yml",
+      "grep -q 'postgres:16' .github/workflows/ci.yml",
+      "grep -q '\\*/5 \\* \\* \\* \\*' .github/workflows/cron.yml",
+      "grep -q '/api/whatsapp/cron' .github/workflows/cron.yml",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm test",
+      "pnpm build"
+    ],
+    "checkpoint": "step-18-ci-seed-handoff",
+    "files": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/cron.yml",
+      "scripts/seed.ts",
+      "README.md",
+      "tests/db/seed.test.ts"
+    ],
+    "status": "pending"
+  }
+]
