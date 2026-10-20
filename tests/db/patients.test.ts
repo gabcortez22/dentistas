@@ -2,6 +2,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { type Actor, closePool as closeAppPool } from "@/lib/db";
 import { normalizePhonePE } from "@/lib/phone";
+import { PRIVACY_POLICY_VERSION } from "@/lib/privacy";
+import { getDataConsent, recordDataConsent } from "@/server/patient-consent";
 import {
   archivePatient,
   createPatient,
@@ -111,6 +113,26 @@ describe("patients", () => {
     expect(edited.phoneE164).toBeNull();
     expect(edited.docNumber).toBe(p.docNumber);
     await expect(updatePatient(actor, p.id, { firstName: "" })).rejects.toBeInstanceOf(ZodError);
+  });
+
+  it("records data consent once with the policy version and keeps the first date", async () => {
+    const { actor } = await actorOf();
+    const p = await createPatient(actor, base());
+    expect(await getDataConsent(actor, p.id)).toBeNull();
+    await recordDataConsent(actor, p.id);
+    const first = await getDataConsent(actor, p.id);
+    expect(first?.version).toBe(PRIVACY_POLICY_VERSION);
+    await recordDataConsent(actor, p.id);
+    expect((await getDataConsent(actor, p.id))?.at).toEqual(first?.at);
+  });
+
+  it("does not record or read consent for a patient of another clinic", async () => {
+    const one = await actorOf();
+    const other = await actorOf();
+    const p = await createPatient(one.actor, base());
+    await recordDataConsent(other.actor, p.id);
+    expect(await getDataConsent(one.actor, p.id)).toBeNull();
+    expect(await getDataConsent(other.actor, p.id)).toBeNull();
   });
 
   it("search is case-insensitive over names and document, limited to the clinic", async () => {

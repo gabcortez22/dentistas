@@ -26,3 +26,10 @@ Found while building; the blueprint text was not rewritten.
 - `DATABASE_URL` must be the **transaction pooler** URI copied from Supabase "Connect" (`aws-0` or `aws-1` differs per project); a wrong host answers `tenant/user not found`. Special characters in the password must be percent-encoded.
 - The home page `/` is a static landing without a login link; users go to `/login`.
 - Remaining before real patient data: Ley 29733 checklist (§20.1), Meta templates approved, Google OAuth scopes and Graph API version verified, model id verified.
+
+## Ley 29733 groundwork
+
+- Migration `20261020000016_patient_data_consent.sql`: `patients.data_consent_at` / `data_consent_version` (nullable; both set or both null). Not yet applied to the hosted Supabase project: run `pnpm db:migrate` against it.
+- Creating a patient in the UI requires confirming the data-processing authorization; the moment and the policy version (`src/lib/privacy.ts`) are stored. Existing patients, and those created by the agent or by prospect conversion, show "Sin registrar" and can be recorded from the patient page. The first date is never overwritten (`src/server/patient-consent.ts`).
+- Public `/privacidad` holds a **provisional** policy text with `[...]` placeholders (providers, retention period, contact). It needs review by a Peruvian lawyer and must be completed before real patient data; bump `PRIVACY_POLICY_VERSION` when the text changes.
+- Still outside the code: banco de datos registration, cross-border transfer notice, NTS 139 retention period and archive procedure, ARCO procedure (data export and cancellation), lawyer review.
