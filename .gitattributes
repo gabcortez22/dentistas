@@ -1,0 +1,4 @@
+# Always check out text files with LF line endings, also on Windows: Biome (lint) and the shell scripts expect LF.
+* text=auto eol=lf
+*.png binary
+*.ico binary
