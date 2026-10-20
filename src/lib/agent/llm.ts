@@ -35,7 +35,8 @@ export function anthropicLlm(): LlmClient {
       const response = await client.messages.create(
         {
           model: AGENT_MODEL,
-          max_tokens: 1024,
+          // Thinking counts toward max_tokens even when its text is omitted; 1024 truncates replies.
+          max_tokens: 4096,
           system,
           messages: messages as Anthropic.MessageParam[],
           tools: tools as Anthropic.Tool[],

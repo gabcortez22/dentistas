@@ -39,3 +39,9 @@ Found while building; the blueprint text was not rewritten.
 ## Clinic registration is closed by default
 
 - The blueprint left `/registro` public, so anyone could create a clinic and an admin. It now needs `REGISTRATION_CODE` (12+ characters): without it the page says "Registro cerrado", the login link is hidden and the server action refuses. With it, the form asks for the invite code (compared in constant time). Set it only in the environment of the deployment; share it only with whoever may create a clinic. `registerClinic` itself is unchanged.
+
+## Agent model check (claude-sonnet-5-5)
+
+- `AGENT_MODEL` default `claude-sonnet-5-5` is a valid model id. `max_tokens` was raised from 1024 to 4096: thinking is on by default on this model and counts toward `max_tokens` even though its text is omitted, so 1024 could cut a reply mid-sentence (`stopReason: "other"`).
+- **Not verified against the real API (no key in the build environment):** `src/lib/agent/llm.ts` keeps only `text` and `tool_use` blocks, so `thinking` blocks are never replayed. The API guide says thinking blocks should be passed back unchanged, and that accounts created on or after 2026-08-31 get a 400 when a replayed block no longer matches its prefix. The system prompt here includes the current date and time to the minute, so replaying blocks would break that check. If the 20-conversation review with a real key shows a 400 on tool-use continuations, send `thinking: {type: "adaptive", block_binding: {prefix_mismatch_behavior: "drop_block"}}` with beta `thinking-binding-controls-2026-08-01` (via `client.beta.messages`), persist and replay the thinking blocks, and re-test. Do not change it blind.
+- Tuning to measure in that review: `output_config.effort` (default `high` on this model); `low` is the suggested first try for chat latency and cost.
