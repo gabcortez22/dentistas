@@ -3412,6 +3412,20 @@ git rev-parse --verify step-18-ci-seed-handoff   # expect: a commit id, exit 0
 
 ---
 
+### Adenda: prospectos y seguimiento (pasos 19 a 21)
+
+Agregada después de los 18 pasos originales a pedido del cliente. El diseño completo, los criterios de aceptación y los comandos de verificación están en `epics/04-prospectos.md`; `tasks.json` trae las tareas `E4-T1` a `E4-T3`.
+
+| # | Paso | Depende de | Compuerta |
+|---|---|---|---|
+| 19 | Prospectos: etapas, historial y seguimientos | 5, 8, 12 | `pnpm test:db tests/db/prospects-service.test.ts` |
+| 20 | Seguimiento automático y captura por el agente | 19, 17 | `pnpm test:db tests/db/followups.test.ts` |
+| 21 | Prospectos: tablero, ficha y seguimientos del día | 20 | `pnpm build` con `/prospectos` en la lista de rutas |
+
+Efecto en el resto del blueprint: el objetivo 10 de §1 ("embudo de prospectos con seguimiento") sale de los no-objetivos; la lista blanca del agente (§14, paso 16) pasa de 8 a 9 herramientas con `capture_prospect`; `.github/workflows/cron.yml` suma la llamada a `/api/prospects/cron`; y las plantillas de WhatsApp a aprobar en Meta son dos: `recordatorio_cita` y `seguimiento_prospecto`.
+
+---
+
 ## 10. Preparación del entorno
 
 ### Prerrequisitos

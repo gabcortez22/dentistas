@@ -28,7 +28,7 @@
       "src/app/api/health/route.ts",
       "tests/unit/health.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T2",
@@ -61,7 +61,7 @@
       "tests/unit/env.test.ts",
       "tests/db/foundation.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T3",
@@ -91,7 +91,7 @@
       "src/app/(auth)/login/**",
       "tests/unit/auth-paths.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T4",
@@ -124,7 +124,7 @@
       "src/app/(app)/**",
       "tests/db/clinics.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T5",
@@ -157,7 +157,7 @@
       "src/app/(app)/pacientes/**",
       "tests/db/patients.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E1-T6",
@@ -191,7 +191,7 @@
       "tests/db/clinical.test.ts",
       "tests/db/clinical-service.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T1",
@@ -219,7 +219,7 @@
       "src/lib/availability/generate-slots.ts",
       "tests/unit/generate-slots.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T2",
@@ -254,7 +254,7 @@
       "tests/db/booking.test.ts",
       "tests/db/appointments-service.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T3",
@@ -287,7 +287,7 @@
       "src/app/(app)/configuracion/horarios/**",
       "tests/db/schedules.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T4",
@@ -321,7 +321,7 @@
       "src/app/api/cron/**",
       "tests/db/reminders*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E2-T5",
@@ -355,7 +355,7 @@
       "src/app/(app)/configuracion/google/**",
       "tests/db/google.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T1",
@@ -390,7 +390,7 @@
       "src/app/(app)/cotizaciones/**",
       "tests/db/quotes*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T2",
@@ -422,7 +422,7 @@
       "tests/unit/quote-pdf.test.ts",
       "tests/db/quote-pdf-route.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T3",
@@ -455,7 +455,7 @@
       "src/app/(app)/cobros/**",
       "tests/db/charges*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T4",
@@ -488,7 +488,7 @@
       "src/app/(app)/resumen/**",
       "tests/db/expenses*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T5",
@@ -522,7 +522,7 @@
       "src/server/agent-tools.ts",
       "tests/db/agent*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T6",
@@ -554,7 +554,7 @@
       "src/app/(app)/simulador/**",
       "tests/db/inbound*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E3-T7",
@@ -594,6 +594,102 @@
       "scripts/seed.ts",
       "README.md",
       "tests/db/seed.test.ts"
+    ],
+    "status": "done"
+  },
+  {
+    "id": "E4-T1",
+    "title": "Prospectos: etapas, historial y seguimientos",
+    "epic": "04-prospectos",
+    "dependencies": [
+      "E1-T5",
+      "E2-T2",
+      "E3-T1"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN a prospect is created with a phone that already belongs to an open prospect of the same clinic THE SYSTEM SHALL return the existing prospect instead of creating a duplicate.",
+      "WHEN `moveStage` moves a prospect THE SYSTEM SHALL append a `stage_change` event with the previous and new stage, and WHEN the new stage is `lost` without a reason THE SYSTEM SHALL throw a `ZodError` naming `lostReason`.",
+      "WHEN an appointment is inserted for the patient linked to a prospect in stage `new` or `contacted` THE SYSTEM SHALL set the prospect to `appointment_booked`, and WHEN a quote is inserted THE SYSTEM SHALL set it to `quoted`, and WHEN that quote becomes `accepted` THE SYSTEM SHALL set it to `won`, each with an automatic event.",
+      "WHEN `convertToPatient` receives valid patient data THE SYSTEM SHALL create the patient, link it to the prospect, and append a `converted` event; WHEN the document already exists THE SYSTEM SHALL throw `DuplicatePatientError` and leave the prospect unlinked.",
+      "WHEN `scheduleFollowup` and `completeFollowup` run THE SYSTEM SHALL list the task in `listDueFollowups` only while it is pending and due, and mark it done with `done_at`.",
+      "WHEN a user of another clinic queries prospects, events or follow-ups THE SYSTEM SHALL return no rows, and `prospect_events` SHALL reject UPDATE and DELETE."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/prospects.test.ts",
+      "pnpm test:db tests/db/prospects-service.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-19-prospects-data",
+    "files": [
+      "supabase/migrations/20261020000013_prospects.sql",
+      "src/server/prospects.ts",
+      "tests/db/prospects.test.ts",
+      "tests/db/prospects-service.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E4-T2",
+    "title": "Seguimiento automático y captura por el agente",
+    "epic": "04-prospectos",
+    "dependencies": [
+      "E4-T1",
+      "E3-T6"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `generateAutoFollowups` runs THE SYSTEM SHALL create one pending task for each open prospect in stage `new` or `contacted` with no event in the last 2 days, and one for each `sent` quote older than 3 days, and WHEN it runs again THE SYSTEM SHALL create no duplicates.",
+      "WHEN `sendDueWhatsappFollowups` runs for a due task whose prospect has WhatsApp consent THE SYSTEM SHALL send the template `seguimiento_prospecto` through the injected sender, append a `contact_attempt` event and mark the task done; WHEN the prospect has no consent THE SYSTEM SHALL leave the task pending for a person and send nothing.",
+      "WHEN the scripted model calls `capture_prospect` on a conversation whose patient is not identified THE SYSTEM SHALL create a prospect with the chat phone and source `whatsapp`, and WHEN the same phone calls it again THE SYSTEM SHALL not create a second one.",
+      "WHEN `capture_prospect` receives a conversation whose patient is already identified THE SYSTEM SHALL return an error result and create nothing, and the agent allow-list SHALL contain exactly the 9 documented tools.",
+      "WHEN `POST /api/prospects/cron` receives a missing or wrong bearer token THE SYSTEM SHALL answer 401, and WHEN it receives the cron secret THE SYSTEM SHALL answer 200 with a JSON summary."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/followups.test.ts",
+      "pnpm test:db tests/db/agent-tools.test.ts",
+      "pnpm typecheck",
+      "pnpm lint"
+    ],
+    "checkpoint": "step-20-prospects-automation",
+    "files": [
+      "src/server/followups.ts",
+      "src/app/api/prospects/cron/route.ts",
+      "src/server/agent-tools.ts",
+      "src/lib/whatsapp/client.ts",
+      "tests/db/followups*.test.ts"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "E4-T3",
+    "title": "Prospectos: tablero, ficha y seguimientos del día",
+    "epic": "04-prospectos",
+    "dependencies": [
+      "E4-T2"
+    ],
+    "priority": "p1",
+    "acceptance": [
+      "WHEN `prospectSummary` runs THE SYSTEM SHALL return the count of prospects per stage and the conversion rate `won / (won + lost)` as a number or null when there is no closed prospect.",
+      "WHEN `pnpm build` runs THE SYSTEM SHALL exit 0 and the route list SHALL include `/prospectos`, `/prospectos/[id]` and `/prospectos/seguimientos`.",
+      "WHEN the navigation renders for an admin, dentist or assistant THE SYSTEM SHALL include the link `Prospectos`."
+    ],
+    "verify": [
+      "pnpm db:up",
+      "pnpm test:db tests/db/prospects-summary.test.ts",
+      "pnpm typecheck",
+      "pnpm lint",
+      "pnpm build > \"${TMPDIR:-/tmp}/dentistas-build.log\" 2>&1 && grep -q '/prospectos' \"${TMPDIR:-/tmp}/dentistas-build.log\""
+    ],
+    "checkpoint": "step-21-prospects-ui",
+    "files": [
+      "src/app/(app)/prospectos/**",
+      "src/app/(app)/layout.tsx",
+      "src/server/prospects.ts",
+      "tests/db/prospects-summary.test.ts"
     ],
     "status": "pending"
   }
