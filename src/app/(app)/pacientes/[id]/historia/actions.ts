@@ -16,6 +16,11 @@ function bodyFor(kind: EntryKind, f: FormData): unknown {
     case "anamnesis":
       return {
         motivoConsulta: val(f, "motivoConsulta"),
+        informante: val(f, "informante"),
+        tiempoEnfermedad: val(f, "tiempoEnfermedad"),
+        signosSintomas: val(f, "signosSintomas"),
+        relatoCronologico: val(f, "relatoCronologico"),
+        funcionesBiologicas: val(f, "funcionesBiologicas"),
         enfermedadActual: val(f, "enfermedadActual"),
         antecedentesPersonales: val(f, "antecedentesPersonales"),
         antecedentesFamiliares: val(f, "antecedentesFamiliares"),
@@ -23,9 +28,24 @@ function bodyFor(kind: EntryKind, f: FormData): unknown {
         medicacionActual: val(f, "medicacionActual"),
       };
     case "examen":
-      return { extraoral: val(f, "extraoral"), intraoral: val(f, "intraoral") };
+      return {
+        extraoral: val(f, "extraoral"),
+        intraoral: val(f, "intraoral"),
+        examenClinicoGeneral: val(f, "examenClinicoGeneral"),
+        funcionesVitales: {
+          presionArterial: val(f, "presionArterial"),
+          pulso: val(f, "pulso"),
+          temperatura: val(f, "temperatura"),
+          frecuenciaCardiaca: val(f, "frecuenciaCardiaca"),
+          frecuenciaRespiratoria: val(f, "frecuenciaRespiratoria"),
+        },
+      };
     case "diagnostico":
-      return { items: [{ descripcion: val(f, "descripcion"), cie10: val(f, "cie10") }] };
+      return {
+        items: [
+          { descripcion: val(f, "descripcion"), cie10: val(f, "cie10"), tipo: val(f, "tipo") },
+        ],
+      };
     case "tratamiento": {
       const pieza = val(f, "pieza");
       return {
@@ -34,6 +54,7 @@ function bodyFor(kind: EntryKind, f: FormData): unknown {
       };
     }
     case "evolucion":
+    case "alta":
       return { texto: val(f, "texto") };
     case "consentimiento":
       return {

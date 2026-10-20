@@ -16,7 +16,10 @@ export default async function PacientePage({ params }: { params: Promise<{ id: s
     ["Fecha de nacimiento", p.birthDate],
     ["Teléfono", p.phoneE164],
     ["Correo", p.email],
-    ["Dirección", p.address],
+    ["Domicilio actual", p.address],
+    ["Lugar de procedencia", p.originPlace],
+    ["Religión", p.religion],
+    ["Raza", p.race],
     ["Recordatorios por WhatsApp", p.whatsappOptIn ? "Sí" : "No"],
   ];
   return (

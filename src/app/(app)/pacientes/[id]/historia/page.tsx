@@ -19,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
   tratamiento: "Tratamiento",
   evolucion: "Evolución",
   consentimiento: "Consentimiento informado",
+  alta: "Alta del paciente",
   nota_correccion: "Corrección",
 };
 const lima = new Intl.DateTimeFormat("es-PE", {
@@ -198,7 +199,12 @@ export default async function HistoriaPage({
               kind: "anamnesis",
               fields: (
                 <>
+                  <Area name="informante" label="Datos del informante" />
                   <Area name="motivoConsulta" label="Motivo de consulta" />
+                  <Area name="tiempoEnfermedad" label="Tiempo de enfermedad" />
+                  <Area name="signosSintomas" label="Signos y síntomas principales" />
+                  <Area name="relatoCronologico" label="Relato cronológico" />
+                  <Area name="funcionesBiologicas" label="Funciones biológicas" />
                   <Area name="enfermedadActual" label="Enfermedad actual" />
                   <Area name="antecedentesPersonales" label="Antecedentes personales" />
                   <Area name="antecedentesFamiliares" label="Antecedentes familiares" />
@@ -211,8 +217,14 @@ export default async function HistoriaPage({
               kind: "examen",
               fields: (
                 <>
+                  <Area name="presionArterial" label="Presión arterial (P.A.)" />
+                  <Area name="pulso" label="Pulso" />
+                  <Area name="temperatura" label="Temperatura" />
+                  <Area name="frecuenciaCardiaca" label="Frecuencia cardiaca (F.C.)" />
+                  <Area name="frecuenciaRespiratoria" label="Frecuencia respiratoria" />
+                  <Area name="examenClinicoGeneral" label="Examen clínico general" />
                   <Area name="extraoral" label="Examen extraoral" />
-                  <Area name="intraoral" label="Examen intraoral" />
+                  <Area name="intraoral" label="Examen odontoestomatológico" />
                 </>
               ),
             },
@@ -221,6 +233,20 @@ export default async function HistoriaPage({
               fields: (
                 <>
                   <Area name="descripcion" label="Diagnóstico" />
+                  <div>
+                    <label htmlFor="tipo" className="block text-sm font-medium">
+                      Tipo
+                    </label>
+                    <select
+                      id="tipo"
+                      name="tipo"
+                      className="mt-1 min-h-11 w-full rounded-control border border-line bg-surface px-3"
+                    >
+                      <option value="">—</option>
+                      <option value="presuntivo">Presuntivo</option>
+                      <option value="definitivo">Definitivo</option>
+                    </select>
+                  </div>
                   <div>
                     <label htmlFor="cie10" className="block text-sm font-medium">
                       CIE-10 (opcional)
@@ -241,11 +267,17 @@ export default async function HistoriaPage({
                     </label>
                     <input id="pieza" name="pieza" inputMode="numeric" className={inputClass} />
                   </div>
-                  <Area name="plan" label="Plan" />
+                  <Area name="plan" label="Plan de trabajo" />
+                  <Area name="pronostico" label="Pronóstico" />
+                  <Area
+                    name="recomendaciones"
+                    label="Recomendaciones (medicamento, dosis, vía, cuidados)"
+                  />
                 </>
               ),
             },
             { kind: "evolucion", fields: <Area name="texto" label="Evolución" /> },
+            { kind: "alta", fields: <Area name="texto" label="Alta del paciente" /> },
             {
               kind: "consentimiento",
               fields: (

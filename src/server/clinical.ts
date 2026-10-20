@@ -11,6 +11,7 @@ export const ENTRY_KINDS = [
   "tratamiento",
   "evolucion",
   "consentimiento",
+  "alta",
 ] as const;
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
@@ -31,6 +32,11 @@ const fdi = z
 export const ENTRY_SCHEMAS = {
   anamnesis: z.object({
     motivoConsulta: t,
+    informante: to,
+    tiempoEnfermedad: to,
+    signosSintomas: to,
+    relatoCronologico: to,
+    funcionesBiologicas: to,
     enfermedadActual: to,
     antecedentesPersonales: to,
     antecedentesFamiliares: to,
@@ -46,10 +52,16 @@ export const ENTRY_SCHEMAS = {
           presionArterial: to,
           pulso: to,
           temperatura: to,
+          frecuenciaCardiaca: to,
+          frecuenciaRespiratoria: to,
         })
         .optional(),
+      examenClinicoGeneral: to,
     })
-    .refine((v) => v.extraoral || v.intraoral || v.funcionesVitales, "al menos un campo"),
+    .refine(
+      (v) => v.extraoral || v.intraoral || v.funcionesVitales || v.examenClinicoGeneral,
+      "al menos un campo",
+    ),
   diagnostico: z.object({
     items: z
       .array(z.object({ descripcion: t, cie10: z.string().trim().min(1).max(20).optional() }))
@@ -62,6 +74,8 @@ export const ENTRY_SCHEMAS = {
       .min(1)
       .max(20),
     plan: to,
+    pronostico: to,
+    recomendaciones: to,
   }),
   evolucion: z.object({ texto: t }),
   consentimiento: z.object({
@@ -70,6 +84,7 @@ export const ENTRY_SCHEMAS = {
     aceptadoPor: t,
     fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
+  alta: z.object({ texto: t }),
 } as const;
 
 export type Entry = {

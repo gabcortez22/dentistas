@@ -68,6 +68,9 @@ export default async function NuevoPacientePage({
             <Field label="Estado civil" name="maritalStatus" />
             <Field label="Grado de instrucción" name="educationLevel" />
             <Field label="Ocupación" name="occupation" />
+            <Field label="Religión" name="religion" />
+            <Field label="Raza" name="race" />
+            <Field label="Lugar de procedencia" name="originPlace" />
           </div>
         </Card>
         <button type="submit" className={buttonClass}>

@@ -87,6 +87,15 @@ describe("patients", () => {
     expect(rows[0].whatsapp_opt_in_at).not.toBeNull();
   });
 
+  it("stores religion, race and place of origin from the COP format", async () => {
+    const { actor } = await actorOf();
+    const p = await createPatient(
+      actor,
+      base({ religion: "Católica", race: "Mestiza", originPlace: "Cusco" }),
+    );
+    expect([p.religion, p.race, p.originPlace]).toEqual(["Católica", "Mestiza", "Cusco"]);
+  });
+
   it("search is case-insensitive over names and document, limited to the clinic", async () => {
     const one = await actorOf();
     const two = await actorOf();

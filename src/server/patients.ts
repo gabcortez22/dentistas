@@ -26,6 +26,9 @@ export type Patient = {
   address: string | null;
   phoneE164: string | null;
   email: string | null;
+  religion: string | null;
+  race: string | null;
+  originPlace: string | null;
   guardianName: string | null;
   guardianPhoneE164: string | null;
   whatsappOptIn: boolean;
@@ -47,6 +50,9 @@ const shape = {
   occupation: text,
   address: text,
   email: z.email().optional(),
+  religion: text,
+  race: text,
+  originPlace: text,
   guardianName: text,
   phone: z.string().trim().min(1).optional(),
   guardianPhone: z.string().trim().min(1).optional(),
@@ -115,6 +121,9 @@ const toPatient = (r: Row): Patient => ({
   address: (r.address as string) ?? null,
   phoneE164: (r.phone_e164 as string) ?? null,
   email: (r.email as string) ?? null,
+  religion: (r.religion as string) ?? null,
+  race: (r.race as string) ?? null,
+  originPlace: (r.origin_place as string) ?? null,
   guardianName: (r.guardian_name as string) ?? null,
   guardianPhoneE164: (r.guardian_phone_e164 as string) ?? null,
   whatsappOptIn: r.whatsapp_opt_in as boolean,
@@ -129,9 +138,9 @@ export async function createPatient(actor: Actor, input: unknown): Promise<Patie
         `insert into patients (clinic_id, hc_number, doc_type, doc_number, last_name, first_name,
            birth_date, birth_place, sex, marital_status, education_level, occupation, address,
            phone_e164, email, guardian_name, guardian_phone_e164, whatsapp_opt_in,
-           whatsapp_opt_in_at, created_by)
+           whatsapp_opt_in_at, created_by, religion, race, origin_place)
          values ($1, $2, $3, $2, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-           case when $17 then now() end, $18)
+           case when $17 then now() end, $18, $19, $20, $21)
          returning *`,
         [
           actor.clinicId,
@@ -152,6 +161,9 @@ export async function createPatient(actor: Actor, input: unknown): Promise<Patie
           d.guardianPhone ? normalizePhonePE(d.guardianPhone) : null,
           d.whatsappOptIn,
           actor.kind === "user" ? actor.membershipId : null,
+          d.religion ?? null,
+          d.race ?? null,
+          d.originPlace ?? null,
         ],
       );
       return toPatient(rows[0]);
@@ -174,6 +186,9 @@ const COLUMN: Record<string, string> = {
   address: "address",
   email: "email",
   guardianName: "guardian_name",
+  religion: "religion",
+  race: "race",
+  originPlace: "origin_place",
 };
 
 export async function updatePatient(actor: Actor, id: string, patch: unknown): Promise<Patient> {

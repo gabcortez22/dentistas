@@ -116,3 +116,34 @@ describe("clinical service", () => {
     ).rejects.toBeInstanceOf(ZodError);
   });
 });
+
+describe("COP format fields", () => {
+  it("accepts the Colegio Odontologico format: informante, vital signs, definitive diagnosis, prognosis and alta", async () => {
+    const { dentist, patient } = await setup();
+    await addEntry(dentist, patient.id, "anamnesis", {
+      motivoConsulta: "Dolor",
+      informante: "Paciente",
+      tiempoEnfermedad: "3 días",
+    });
+    await addEntry(dentist, patient.id, "examen", {
+      funcionesVitales: { presionArterial: "120/80", frecuenciaRespiratoria: "16" },
+      examenClinicoGeneral: "Sin hallazgos",
+    });
+    await addEntry(dentist, patient.id, "diagnostico", {
+      items: [{ descripcion: "Caries de dentina", cie10: "K02.1", tipo: "definitivo" }],
+    });
+    await addEntry(dentist, patient.id, "tratamiento", {
+      items: [{ descripcion: "Resina", pieza: 26 }],
+      plan: "2 sesiones",
+      pronostico: "Favorable",
+    });
+    await addEntry(dentist, patient.id, "alta", { texto: "Alta con controles semestrales" });
+    expect((await openRecord(dentist, patient.id)).entries.map((e) => e.kind)).toEqual([
+      "anamnesis",
+      "examen",
+      "diagnostico",
+      "tratamiento",
+      "alta",
+    ]);
+  });
+});
