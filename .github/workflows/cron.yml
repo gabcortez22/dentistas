@@ -1,0 +1,17 @@
+name: cron
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send due reminders
+        run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/cron/tick"
+      - name: Sync Google Calendar
+        run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/google/cron"
+      - name: Process pending WhatsApp messages
+        run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/whatsapp/cron"
