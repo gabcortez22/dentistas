@@ -1,6 +1,7 @@
 const PUBLIC_PREFIXES = [
   "/login",
   "/registro",
+  "/privacidad",
   "/api/health",
   "/api/whatsapp",
   "/api/cron",

@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, secondaryButtonClass } from "@/app/_components/ui";
+import { getDataConsent } from "@/server/patient-consent";
 import { getPatient } from "@/server/patients";
 import { requireSession, userActor } from "@/server/session";
-import { archivePatientAction } from "../actions";
+import { archivePatientAction, recordDataConsentAction } from "../actions";
 
 export default async function PacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireSession();
   const p = await getPatient(userActor(ctx), id);
   if (!p) notFound();
+  const consent = await getDataConsent(userActor(ctx), p.id);
   const rows: Array<[string, string | null]> = [
     ["Documento", `${p.docType} ${p.docNumber}`],
     ["N° de historia clínica", p.hcNumber],
@@ -21,6 +23,12 @@ export default async function PacientePage({ params }: { params: Promise<{ id: s
     ["Religión", p.religion],
     ["Raza", p.race],
     ["Recordatorios por WhatsApp", p.whatsappOptIn ? "Sí" : "No"],
+    [
+      "Autorización de datos personales",
+      consent
+        ? `Otorgada el ${consent.at.toLocaleDateString("es-PE", { timeZone: "America/Lima" })}`
+        : "Sin registrar",
+    ],
   ];
   return (
     <div className="max-w-3xl space-y-6">
@@ -46,6 +54,14 @@ export default async function PacientePage({ params }: { params: Promise<{ id: s
           >
             Historia clínica
           </Link>
+        ) : null}
+        {!consent ? (
+          <form action={recordDataConsentAction}>
+            <input type="hidden" name="id" value={p.id} />
+            <button type="submit" className={secondaryButtonClass}>
+              Registrar autorización de datos
+            </button>
+          </form>
         ) : null}
         {!p.archivedAt ? (
           <Link

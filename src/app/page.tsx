@@ -11,6 +11,11 @@ export default function HomePage() {
       <Link href="/login" className={`${buttonClass} mt-6 inline-flex items-center`}>
         Iniciar sesión
       </Link>
+      <p className="mt-8 text-sm text-ink-muted">
+        <Link href="/privacidad" className="underline">
+          Política de privacidad
+        </Link>
+      </p>
     </main>
   );
 }
