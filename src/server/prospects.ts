@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { type Actor, runAs } from "@/lib/db";
 import { normalizePhonePE } from "@/lib/phone";
-import { createPatient, type Patient } from "@/server/patients";
+import { createPatientInTx, type Patient } from "@/server/patients";
 
 export const STAGES = ["new", "contacted", "appointment_booked", "quoted", "won", "lost"] as const;
 export type Stage = (typeof STAGES)[number];
@@ -289,20 +289,29 @@ export async function listDueFollowups(
   });
 }
 
+/** Creates the patient, links it and logs the conversion in ONE transaction: nothing is left half done. */
 export async function convertToPatient(
   actor: Actor,
   prospectId: string,
   patientInput: Record<string, unknown>,
 ): Promise<Patient> {
-  const found = await getProspect(actor, prospectId);
-  if (!found) throw new Error("prospect not found");
-  if (found.prospect.patientId) throw new Error("prospect already converted");
-  const patient = await createPatient(actor, {
-    phone: found.prospect.phoneE164 ?? undefined,
-    email: found.prospect.email ?? undefined,
-    ...patientInput,
-  });
-  await runAs(actor, async (client) => {
+  return runAs(actor, async (client) => {
+    const found = await client.query<{
+      phone_e164: string | null;
+      email: string | null;
+      patient_id: string | null;
+    }>(
+      "select phone_e164, email, patient_id from prospects where id = $1 and clinic_id = $2 for update",
+      [prospectId, actor.clinicId],
+    );
+    const prospect = found.rows[0];
+    if (!prospect) throw new Error("prospect not found");
+    if (prospect.patient_id) throw new Error("prospect already converted");
+    const patient = await createPatientInTx(client, actor, {
+      phone: prospect.phone_e164 ?? undefined,
+      email: prospect.email ?? undefined,
+      ...patientInput,
+    });
     await client.query("update prospects set patient_id = $3 where id = $1 and clinic_id = $2", [
       prospectId,
       actor.clinicId,
@@ -312,8 +321,8 @@ export async function convertToPatient(
       "insert into prospect_events (clinic_id, prospect_id, kind, body, author_membership_id) values ($1, $2, 'converted', $3, $4)",
       [actor.clinicId, prospectId, JSON.stringify({ patientId: patient.id }), authorOf(actor)],
     );
+    return patient;
   });
-  return patient;
 }
 
 export async function prospectSummary(

@@ -31,7 +31,7 @@ export async function generateAutoFollowups(opts: { now?: Date } = {}): Promise<
               'Dar seguimiento a la cotización N° ' || lpad(q.number::text, 6, '0'), p.assigned_to,
               'quote:' || q.id::text
          from quotes q join prospects p on p.patient_id = q.patient_id and p.clinic_id = q.clinic_id
-        where q.status = 'sent' and q.created_at < $2 and p.stage = 'quoted'
+        where q.status = 'sent' and coalesce(q.sent_at, q.created_at) < $2 and p.stage = 'quoted'
        on conflict (prospect_id, auto_key) do nothing`,
       [now, new Date(now.getTime() - STALE_QUOTE_DAYS * DAY)],
     );

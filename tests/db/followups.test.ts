@@ -75,6 +75,45 @@ describe("generateAutoFollowups", () => {
   });
 });
 
+describe("quote follow-up age", () => {
+  it("counts from the send date, not from the creation date", async () => {
+    const a = await seedClinic();
+    const patientId = await createPatientRow(a.clinicId);
+    const prospectId = await prospect(a.clinicId, {
+      stage: "quoted",
+      patientId,
+      created: new Date(NOW.getTime() - DAY),
+    });
+    await pool.query(
+      "insert into quotes (clinic_id, patient_id, number, valid_until, created_by, created_at) values ($1, $2, 1, current_date + 30, $3, $4)",
+      [a.clinicId, patientId, a.dentist.membershipId, new Date(NOW.getTime() - 10 * DAY)],
+    );
+    await pool.query("update quotes set status = 'sent' where clinic_id = $1", [a.clinicId]);
+    const stamped = await pool.query(
+      "select sent_at is not null as stamped from quotes where clinic_id = $1",
+      [a.clinicId],
+    );
+    expect(stamped.rows[0].stamped).toBe(true);
+    // sent yesterday (relative to NOW): created 10 days ago but not yet due for follow-up
+    await pool.query("update quotes set sent_at = $2 where clinic_id = $1", [
+      a.clinicId,
+      new Date(NOW.getTime() - DAY),
+    ]);
+    await generateAutoFollowups({ now: NOW });
+    expect(
+      (await tasks(prospectId)).filter((t) => String(t.auto_key).startsWith("quote:")),
+    ).toHaveLength(0);
+    await pool.query("update quotes set sent_at = $2 where clinic_id = $1", [
+      a.clinicId,
+      new Date(NOW.getTime() - 4 * DAY),
+    ]);
+    await generateAutoFollowups({ now: NOW });
+    expect(
+      (await tasks(prospectId)).filter((t) => String(t.auto_key).startsWith("quote:")),
+    ).toHaveLength(1);
+  });
+});
+
 describe("sendDueWhatsappFollowups", () => {
   it("sends the template to a consenting prospect, logs the attempt and completes the task", async () => {
     const a = await seedClinic();

@@ -117,4 +117,54 @@ describe("prospects service", () => {
     expect(row.rows[0].done_at).not.toBeNull();
     await expect(completeFollowup(actor, due.id)).rejects.toThrow(/not pending/);
   });
+
+  it("convertToPatient does not leave a half-converted prospect: no conversion event after a duplicate document", async () => {
+    const { actor } = await setup();
+    await createPatient(actor, { docNumber: "12121212", lastName: "Existente", firstName: "Ya" });
+    const { prospect } = await createProspect(actor, { name: "Otra", phone: "987222333" });
+    await expect(
+      convertToPatient(actor, prospect.id, {
+        docNumber: "12121212",
+        lastName: "O",
+        firstName: "P",
+      }),
+    ).rejects.toBeInstanceOf(DuplicatePatientError);
+    expect((await getProspect(actor, prospect.id))?.events.map((e) => e.kind)).not.toContain(
+      "converted",
+    );
+  });
+
+  it("convertToPatient is atomic: when linking fails after the patient insert, no patient remains", async () => {
+    const { actor, a } = await setup();
+    const { prospect } = await createProspect(actor, { name: "Atómico", phone: "987555666" });
+    await pool.query(
+      `create or replace function test_block_link() returns trigger language plpgsql as $$ begin
+         if new.patient_id is not null and new.name = 'Atómico' then raise exception 'link blocked by test'; end if;
+         return new; end $$`,
+    );
+    await pool.query(
+      "create trigger test_block_link before update on prospects for each row execute function test_block_link()",
+    );
+    try {
+      await expect(
+        convertToPatient(actor, prospect.id, {
+          docNumber: "88889999",
+          lastName: "A",
+          firstName: "B",
+        }),
+      ).rejects.toThrow(/link blocked/);
+    } finally {
+      await pool.query("drop trigger test_block_link on prospects");
+      await pool.query("drop function test_block_link()");
+    }
+    expect(
+      (
+        await pool.query(
+          "select count(*)::int as n from patients where clinic_id = $1 and doc_number = '88889999'",
+          [a.clinicId],
+        )
+      ).rows[0].n,
+    ).toBe(0);
+    expect((await getProspect(actor, prospect.id))?.prospect.patientId).toBeNull();
+  });
 });

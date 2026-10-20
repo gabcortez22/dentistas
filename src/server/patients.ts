@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { z } from "zod";
 import { type Actor, runAs } from "@/lib/db";
 import { normalizePhonePE } from "@/lib/phone";
@@ -130,48 +131,55 @@ const toPatient = (r: Row): Patient => ({
   archivedAt: (r.archived_at as Date) ?? null,
 });
 
-export async function createPatient(actor: Actor, input: unknown): Promise<Patient> {
+/** Inserts a patient inside the caller's transaction. A duplicate document raises DuplicatePatientError. */
+export async function createPatientInTx(
+  client: PoolClient,
+  actor: Actor,
+  input: unknown,
+): Promise<Patient> {
   const d = patientInput.parse(input);
   try {
-    return await runAs(actor, async (client) => {
-      const { rows } = await client.query(
-        `insert into patients (clinic_id, hc_number, doc_type, doc_number, last_name, first_name,
-           birth_date, birth_place, sex, marital_status, education_level, occupation, address,
-           phone_e164, email, guardian_name, guardian_phone_e164, whatsapp_opt_in,
-           whatsapp_opt_in_at, created_by, religion, race, origin_place)
-         values ($1, $2, $3, $2, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-           case when $17 then now() end, $18, $19, $20, $21)
-         returning *`,
-        [
-          actor.clinicId,
-          d.docNumber,
-          d.docType,
-          d.lastName,
-          d.firstName,
-          d.birthDate ?? null,
-          d.birthPlace ?? null,
-          d.sex ?? null,
-          d.maritalStatus ?? null,
-          d.educationLevel ?? null,
-          d.occupation ?? null,
-          d.address ?? null,
-          d.phone ? normalizePhonePE(d.phone) : null,
-          d.email ?? null,
-          d.guardianName ?? null,
-          d.guardianPhone ? normalizePhonePE(d.guardianPhone) : null,
-          d.whatsappOptIn,
-          actor.kind === "user" ? actor.membershipId : null,
-          d.religion ?? null,
-          d.race ?? null,
-          d.originPlace ?? null,
-        ],
-      );
-      return toPatient(rows[0]);
-    });
+    const { rows } = await client.query(
+      `insert into patients (clinic_id, hc_number, doc_type, doc_number, last_name, first_name,
+         birth_date, birth_place, sex, marital_status, education_level, occupation, address,
+         phone_e164, email, guardian_name, guardian_phone_e164, whatsapp_opt_in,
+         whatsapp_opt_in_at, created_by, religion, race, origin_place)
+       values ($1, $2, $3, $2, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+         case when $17 then now() end, $18, $19, $20, $21)
+       returning *`,
+      [
+        actor.clinicId,
+        d.docNumber,
+        d.docType,
+        d.lastName,
+        d.firstName,
+        d.birthDate ?? null,
+        d.birthPlace ?? null,
+        d.sex ?? null,
+        d.maritalStatus ?? null,
+        d.educationLevel ?? null,
+        d.occupation ?? null,
+        d.address ?? null,
+        d.phone ? normalizePhonePE(d.phone) : null,
+        d.email ?? null,
+        d.guardianName ?? null,
+        d.guardianPhone ? normalizePhonePE(d.guardianPhone) : null,
+        d.whatsappOptIn,
+        actor.kind === "user" ? actor.membershipId : null,
+        d.religion ?? null,
+        d.race ?? null,
+        d.originPlace ?? null,
+      ],
+    );
+    return toPatient(rows[0]);
   } catch (error) {
     if ((error as { code?: string }).code === "23505") throw new DuplicatePatientError();
     throw error;
   }
+}
+
+export async function createPatient(actor: Actor, input: unknown): Promise<Patient> {
+  return runAs(actor, (client) => createPatientInTx(client, actor, input));
 }
 
 const COLUMN: Record<string, string> = {

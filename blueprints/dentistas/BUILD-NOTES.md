@@ -16,4 +16,5 @@ Found while building; the blueprint text was not rewritten.
 - Migration `20261020000013_prospects.sql`: `prospects`, append-only `prospect_events`, `followup_tasks`; `SECURITY DEFINER` triggers advance the stage when the linked patient books, is quoted or accepts.
 - Automatic follow-ups are created by `/api/prospects/cron` (also called from `.github/workflows/cron.yml`). WhatsApp follow-ups go only to prospects with explicit consent and need the Meta template `seguimiento_prospecto` (utility, `es`, params: name, clinic) approved; without consent the task stays for a person.
 - The agent gained `capture_prospect` (allow-list is now 9 tools). It still has no tool that reads clinical data.
-- "Sent" quote age uses `quotes.created_at` (there is no `sent_at` column).
+- Migration `20261020000014_quote_sent_at.sql` adds `quotes.sent_at` (stamped by a trigger when a quote becomes `sent`); the follow-up age counts from it, falling back to `created_at` for older rows.
+- `convertToPatient` creates the patient, links it and logs the conversion in one transaction (`createPatientInTx`), so a failure leaves nothing half done.
