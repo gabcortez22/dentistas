@@ -55,6 +55,15 @@ export default async function PacientePage({ params }: { params: Promise<{ id: s
             Historia clínica
           </Link>
         ) : null}
+        {ctx.role !== "assistant" ? (
+          <a
+            href={`/api/patients/${p.id}/export`}
+            download
+            className={`${secondaryButtonClass} inline-flex items-center`}
+          >
+            Descargar copia de los datos
+          </a>
+        ) : null}
         {!consent ? (
           <form action={recordDataConsentAction}>
             <input type="hidden" name="id" value={p.id} />
