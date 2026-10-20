@@ -15,3 +15,5 @@ jobs:
         run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/google/cron"
       - name: Process pending WhatsApp messages
         run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/whatsapp/cron"
+      - name: Prospect follow-ups
+        run: curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "${{ secrets.APP_URL }}/api/prospects/cron"

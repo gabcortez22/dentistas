@@ -5,6 +5,7 @@ import { type Actor, withService } from "@/lib/db";
 import { bookAppointment, cancelAppointment, SlotTakenError } from "@/server/appointments";
 import { loadSlots } from "@/server/availability";
 import { createPatient, DuplicatePatientError } from "@/server/patients";
+import { createProspect } from "@/server/prospects";
 
 export const TOOL_NAMES = [
   "identify_patient",
@@ -14,6 +15,7 @@ export const TOOL_NAMES = [
   "book_appointment",
   "cancel_appointment",
   "get_balance",
+  "capture_prospect",
   "handoff_to_human",
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -47,6 +49,10 @@ const schemas = {
   book_appointment: z.object({ proposalId: z.uuid() }),
   cancel_appointment: z.object({ appointmentId: z.uuid() }),
   get_balance: z.object({}),
+  capture_prospect: z.object({
+    name: z.string().trim().min(1).max(120),
+    interest: z.string().trim().min(1).max(300).optional(),
+  }),
   handoff_to_human: z.object({ reason: z.string().trim().min(1).max(300) }),
 } satisfies Record<ToolName, z.ZodType>;
 
@@ -63,6 +69,8 @@ const DESCRIPTIONS: Record<ToolName, string> = {
     "Agenda la cita de una propuesta ya confirmada por el paciente en un mensaje posterior.",
   cancel_appointment: "Cancela una cita futura del paciente identificado.",
   get_balance: "Devuelve el saldo pendiente total del paciente identificado.",
+  capture_prospect:
+    "Registra como prospecto a quien consulta sin ser paciente registrado ni agendar todavía (nombre e interés). Solo si el chat no tiene paciente identificado.",
   handoff_to_human: "Deriva la conversación a una persona del equipo y detiene al asistente.",
 };
 
@@ -342,6 +350,20 @@ export async function executeTool(
           ),
         );
         return ok({ balanceCents: balance, balanceText: `S/ ${(balance / 100).toFixed(2)}` });
+      }
+      case "capture_prospect": {
+        if (convo.patientId)
+          return fail(
+            "el chat ya tiene un paciente identificado; no hace falta captar un prospecto",
+          );
+        const args = argsOf("capture_prospect");
+        const { created } = await createProspect(service, {
+          name: args.name,
+          phone: convo.phone,
+          source: "whatsapp",
+          interest: args.interest,
+        });
+        return ok({ captured: true, created });
       }
       case "handoff_to_human": {
         await withService((client) =>

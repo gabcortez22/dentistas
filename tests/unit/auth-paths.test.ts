@@ -13,6 +13,7 @@ describe("isPublicPath", () => {
     "/api/whatsapp/cron",
     "/api/cron/tick",
     "/api/google/cron",
+    "/api/prospects/cron",
     "/api/google/oauth/callback",
   ])("%s is public", (path) => expect(isPublicPath(path)).toBe(true));
   it.each([
@@ -23,6 +24,7 @@ describe("isPublicPath", () => {
     "/api/cronjob",
     "/api/google/oauth/start",
     "/api/whatsappx",
+    "/api/prospects",
   ])("%s is private", (path) => expect(isPublicPath(path)).toBe(false));
 });
 

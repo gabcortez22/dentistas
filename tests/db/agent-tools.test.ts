@@ -107,7 +107,7 @@ describe("agent tools", () => {
     ).toBe(true);
   });
 
-  it("get_balance and cancel_appointment need an identified patient; the allow-list is exactly the 8 tools", async () => {
+  it("get_balance and cancel_appointment need an identified patient; the allow-list is exactly the 9 tools", async () => {
     const { ctx } = await setup({ identified: false });
     expect((await executeTool(ctx, "get_balance", {})).isError).toBe(true);
     expect(
@@ -122,6 +122,7 @@ describe("agent tools", () => {
       "book_appointment",
       "cancel_appointment",
       "get_balance",
+      "capture_prospect",
       "handoff_to_human",
     ]);
     expect(TOOL_NAMES.some((n) => /clinical|history|historia/.test(n))).toBe(false);

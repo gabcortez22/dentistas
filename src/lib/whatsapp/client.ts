@@ -6,7 +6,7 @@ export const GRAPH_API_VERSION = "v23.0";
 
 export type TemplateMessage = {
   to: string;
-  template: "recordatorio_cita";
+  template: "recordatorio_cita" | "seguimiento_prospecto";
   language: "es";
   params: string[];
 };

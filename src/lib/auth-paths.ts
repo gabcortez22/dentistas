@@ -5,6 +5,7 @@ const PUBLIC_PREFIXES = [
   "/api/whatsapp",
   "/api/cron",
   "/api/google/cron",
+  "/api/prospects/cron",
   "/api/google/oauth/callback",
 ];
 
