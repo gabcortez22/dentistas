@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/pacientes", label: "Pacientes", roles: ["admin", "dentist", "assistant"] },
   { href: "/agenda", label: "Agenda", roles: ["admin", "dentist", "assistant"] },
+  { href: "/prospectos", label: "Prospectos", roles: ["admin", "dentist", "assistant"] },
   { href: "/cotizaciones", label: "Cotizaciones", roles: ["admin", "dentist"] },
   { href: "/cobros", label: "Cobros", roles: ["admin", "dentist", "assistant"] },
   { href: "/gastos", label: "Gastos", roles: ["admin"] },

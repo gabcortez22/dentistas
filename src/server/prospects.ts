@@ -315,3 +315,18 @@ export async function convertToPatient(
   });
   return patient;
 }
+
+export async function prospectSummary(
+  actor: Actor,
+): Promise<{ byStage: Record<Stage, number>; conversionRate: number | null }> {
+  return runAs(actor, async (client) => {
+    const { rows } = await client.query<{ stage: Stage; n: number }>(
+      "select stage, count(*)::int as n from prospects where clinic_id = $1 group by stage",
+      [actor.clinicId],
+    );
+    const byStage = Object.fromEntries(STAGES.map((s) => [s, 0])) as Record<Stage, number>;
+    for (const r of rows) byStage[r.stage] = r.n;
+    const closed = byStage.won + byStage.lost;
+    return { byStage, conversionRate: closed === 0 ? null : byStage.won / closed };
+  });
+}

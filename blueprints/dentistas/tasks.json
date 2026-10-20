@@ -629,7 +629,7 @@
       "tests/db/prospects.test.ts",
       "tests/db/prospects-service.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E4-T2",
@@ -662,7 +662,7 @@
       "src/lib/whatsapp/client.ts",
       "tests/db/followups*.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   },
   {
     "id": "E4-T3",
@@ -691,6 +691,6 @@
       "src/server/prospects.ts",
       "tests/db/prospects-summary.test.ts"
     ],
-    "status": "pending"
+    "status": "done"
   }
 ]
