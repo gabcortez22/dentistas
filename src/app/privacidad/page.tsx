@@ -37,9 +37,38 @@ export default function PrivacidadPage() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Transferencia a otros países</h2>
         <p>
-          Para operar el servicio, los datos se almacenan y procesan con proveedores ubicados fuera
-          del Perú (almacenamiento en Brasil y servicios de alojamiento y asistente automático en
-          otros países). [Completar con los proveedores y garantías vigentes.]
+          Para brindar el servicio, algunos de tus datos se envían a proveedores cuyos servidores
+          están fuera del Perú. La clínica solo los usa para los fines indicados en esta política.
+        </p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            <strong>Supabase</strong> (Brasil): almacena la base de datos de la clínica, incluidos
+            tus datos de identificación, contacto, historia clínica, citas, cotizaciones y cobros.
+          </li>
+          <li>
+            <strong>Vercel</strong> (Estados Unidos) [confirmar la región configurada]: aloja la
+            aplicación por la que el personal de la clínica accede a esos datos.
+          </li>
+          <li>
+            <strong>Meta (WhatsApp)</strong> (Estados Unidos y otros países): transmite los
+            recordatorios de cita y los mensajes con la clínica, que incluyen tu nombre y tu número
+            de teléfono. Solo si lo autorizaste.
+          </li>
+          <li>
+            <strong>Anthropic</strong> (Estados Unidos): procesa los mensajes que escribes al
+            asistente automático de WhatsApp de la clínica para responderte y agendar citas. El
+            asistente no accede a tu historia clínica.
+          </li>
+          <li>
+            <strong>Google</strong> (Estados Unidos y otros países): sincroniza las citas con el
+            calendario del dentista.
+          </li>
+        </ul>
+        <p>
+          Estos proveedores aplican medidas de seguridad y de confidencialidad, y la clínica
+          restringe el acceso a su personal autorizado. [Abogado: confirmar que los contratos con
+          cada proveedor ofrecen un nivel de protección adecuado y si corresponde informar este
+          flujo a la Autoridad Nacional de Protección de Datos Personales.]
         </p>
       </section>
       <section className="space-y-2">
