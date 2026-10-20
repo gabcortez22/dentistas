@@ -17,7 +17,7 @@ Software web para clínicas dentales del Perú: historias clínicas (formato del
 cp .env.example .env     # completa las variables; ver §10 del blueprint
 pnpm install
 pnpm db:up               # Postgres 16 local para pruebas (puerto 54329)
-pnpm db:migrate          # aplica supabase/migrations/ a DATABASE_URL
+pnpm db:migrate          # aplica supabase/migrations/ a DATABASE_URL (en Supabase: URI del Transaction pooler, copiada de Connect)
 pnpm db:seed             # clínica demo con datos ficticios (admin@demo.test)
 pnpm dev                 # http://localhost:3000
 ```

@@ -4,7 +4,7 @@
 > Forma: `saas-webapp` (+ capacidades: motor de disponibilidad, agente de IA, pagos registrados) · `knowledge/shapes/saas-webapp.md`
 > Pista de ejecución: TypeScript / Node · `knowledge/runtime-tracks/ts-node.md`
 > Modo de emisión: bundle (18 pasos)
-> Versión del blueprint: 1
+> Versión del blueprint: 2 (estado tras el despliegue en Supabase, 2026-10-20: 15 migraciones, 21 pasos hechos; desviaciones en `BUILD-NOTES.md`)
 > Versiones verificadas por última vez: 2026-10-20 — procedencia por paquete en §11
 
 ---

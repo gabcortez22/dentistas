@@ -18,3 +18,11 @@ Found while building; the blueprint text was not rewritten.
 - The agent gained `capture_prospect` (allow-list is now 9 tools). It still has no tool that reads clinical data.
 - Migration `20261020000014_quote_sent_at.sql` adds `quotes.sent_at` (stamped by a trigger when a quote becomes `sent`); the follow-up age counts from it, falling back to `created_at` for older rows.
 - `convertToPatient` creates the patient, links it and logs the conversion in one transaction (`createPatientInTx`), so a failure leaves nothing half done.
+
+## Hosted Supabase deployment (first real run)
+
+- Project `dentistas` (region `sa-east-1`) created with "Automatically expose new tables" **off** and automatic RLS off: the migrations own grants and RLS. All 15 migrations were applied and recorded in `public._migrations`, so `pnpm db:migrate` reports `up to date`. `pnpm db:seed` and a login as `admin@demo.test` were verified against it.
+- Migration `20261020000015_lock_functions.sql`: Supabase exposes `public` functions over `/rest/v1/rpc`, so `EXECUTE` is revoked on the trigger and internal `SECURITY DEFINER` functions (`advance_prospect`, `prospects_on_*`, `sync_appointment_reminders`) from `public`, `anon` and `authenticated`. The RLS helpers (`current_clinic_ids`, `current_role_in`, `is_clinic_admin`) and `next_quote_number` stay executable by `authenticated` only (revoking from `public` also removes the implicit grant, hence the explicit `grant`). `search_path` is pinned on the four plain trigger functions.
+- `DATABASE_URL` must be the **transaction pooler** URI copied from Supabase "Connect" (`aws-0` or `aws-1` differs per project); a wrong host answers `tenant/user not found`. Special characters in the password must be percent-encoded.
+- The home page `/` is a static landing without a login link; users go to `/login`.
+- Remaining before real patient data: Ley 29733 checklist (§20.1), Meta templates approved, Google OAuth scopes and Graph API version verified, model id verified.
