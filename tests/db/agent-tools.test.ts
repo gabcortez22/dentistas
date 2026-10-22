@@ -35,10 +35,10 @@ async function setup(opts: { identified?: boolean } = {}) {
   );
   const ctx = { conversationId: convo.rows[0]?.id as string, now: () => NOW };
   const userTurn = () =>
-    pool.query("insert into agent_turns (conversation_id, role, content) values ($1, 'user', $2)", [
-      ctx.conversationId,
-      JSON.stringify([{ type: "text", text: "sí, confirmo" }]),
-    ]);
+    pool.query(
+      "insert into agent_turns (conversation_id, clinic_id, role, content) values ($1, $2, 'user', $3)",
+      [ctx.conversationId, a.clinicId, JSON.stringify([{ type: "text", text: "sí, confirmo" }])],
+    );
   const parse = (r: { content: string }) =>
     JSON.parse(r.content) as {
       proposalId: string;
