@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/(auth)/login/actions";
-import { withService } from "@/lib/db";
-import { requireSession } from "@/server/session";
+import { getClinicName } from "@/server/clinics";
+import { requireSession, userActor } from "@/server/session";
 
 // Everything under (app) depends on the session: never prerender it.
 export const dynamic = "force-dynamic";
@@ -24,13 +24,7 @@ const NAV = [
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await requireSession();
-  const clinicName = await withService(async (client) => {
-    const { rows } = await client.query<{ name: string }>(
-      "select name from clinics where id = $1",
-      [ctx.clinicId],
-    );
-    return rows[0]?.name ?? "";
-  });
+  const clinicName = await getClinicName(userActor(ctx));
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface">

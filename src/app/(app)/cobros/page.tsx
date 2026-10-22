@@ -8,9 +8,8 @@ import {
   inputClass,
   secondaryButtonClass,
 } from "@/app/_components/ui";
-import { withService } from "@/lib/db";
 import { formatPEN } from "@/lib/money";
-import { listCharges, patientBalance } from "@/server/charges";
+import { listCharges, listQuoteBalances, patientBalance } from "@/server/charges";
 import { searchPatients } from "@/server/patients";
 import { requireSession, userActor } from "@/server/session";
 import { recordChargeAction, voidChargeAction } from "./actions";
@@ -36,15 +35,7 @@ export default async function CobrosPage({
     q ? searchPatients(actor, { q, limit: 10 }) : [],
   ]);
   const balance = paciente ? await patientBalance(actor, paciente) : null;
-  const quotes = paciente
-    ? await withService(async (client) => {
-        const { rows } = await client.query(
-          "select quote_id, number, balance_cents from quote_balances where patient_id = $1 and clinic_id = $2 and balance_cents > 0 order by number",
-          [paciente, ctx.clinicId],
-        );
-        return rows;
-      })
-    : [];
+  const quotes = paciente ? await listQuoteBalances(actor, paciente) : [];
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-semibold text-brand">Cobros</h1>
@@ -85,9 +76,8 @@ export default async function CobrosPage({
               <select id="quoteId" name="quoteId" className={inputClass}>
                 <option value="">Sin cotización</option>
                 {quotes.map((r) => (
-                  <option key={r.quote_id} value={r.quote_id}>
-                    N° {String(r.number).padStart(6, "0")} — saldo{" "}
-                    {formatPEN(Number(r.balance_cents))}
+                  <option key={r.quoteId} value={r.quoteId}>
+                    N° {String(r.number).padStart(6, "0")} — saldo {formatPEN(r.balanceCents)}
                   </option>
                 ))}
               </select>
