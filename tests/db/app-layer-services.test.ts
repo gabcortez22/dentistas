@@ -83,6 +83,23 @@ describe("listQuoteBalances", () => {
     expect(await listQuoteBalances(dentist, patient.id)).toEqual([]);
   });
 
+  it("shows an assistant the quotes they can charge against, although RLS hides quotes from them", async () => {
+    const { assistant, patient, quote, accept } = await setup();
+    await accept();
+    expect(await listQuoteBalances(assistant, patient.id)).toEqual([
+      { quoteId: quote.id, number: expect.any(Number), balanceCents: 9000 },
+    ]);
+  });
+
+  it("refuses someone who is not an active member of the clinic they name", async () => {
+    const { a, patient, accept } = await setup();
+    await accept();
+    const stranger = await seedClinic();
+    await expect(
+      listQuoteBalances(actorOf(a.clinicId, stranger.admin), patient.id),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
   it("does not show another clinic's quotes", async () => {
     const { patient, accept } = await setup();
     await accept();

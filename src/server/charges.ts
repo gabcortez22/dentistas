@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import { z } from "zod";
-import { withService, withTenant } from "@/lib/db";
+import { withService } from "@/lib/db";
 import { ForbiddenError, type UserActor } from "@/server/session";
 
 export class OverpaymentError extends Error {
@@ -173,12 +173,16 @@ export async function patientBalance(
 
 export type QuoteBalance = { quoteId: string; number: number; balanceCents: number };
 
-/** Accepted quotes of the patient that still owe money, oldest number first. */
+/**
+ * Accepted quotes of the patient that still owe money, oldest number first. Read with the owner role
+ * like the rest of this file: assistants record charges but RLS hides quotes from them.
+ */
 export async function listQuoteBalances(
   actor: UserActor,
   patientId: string,
 ): Promise<QuoteBalance[]> {
-  return withTenant(actor.userId, async (client) => {
+  return withService(async (client) => {
+    await assertMember(client, actor);
     const { rows } = await client.query(
       `select quote_id, number, balance_cents from quote_balances
         where patient_id = $1 and clinic_id = $2 and balance_cents > 0 order by number`,
