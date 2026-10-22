@@ -163,10 +163,12 @@ export async function receiveWebhook(
   makeDeps: () => Deps,
 ): Promise<Response> {
   const env = getEnv("whatsapp");
-  if (
-    env.WHATSAPP_MODE === "cloud" &&
-    !verifySignature(rawBody, signatureHeader, env.WHATSAPP_APP_SECRET as string)
-  ) {
+  // Fail closed: only Meta signs deliveries, so without cloud mode nothing here can be authenticated.
+  // The simulator calls ingestPayload directly and never goes through the webhook.
+  if (env.WHATSAPP_MODE !== "cloud") {
+    return Response.json({ error: "webhook_disabled" }, { status: 403 });
+  }
+  if (!verifySignature(rawBody, signatureHeader, env.WHATSAPP_APP_SECRET as string)) {
     return Response.json({ error: "invalid_signature" }, { status: 401 });
   }
   let payload: unknown;

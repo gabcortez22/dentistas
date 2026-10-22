@@ -107,6 +107,38 @@ describe("receiveWebhook", () => {
     expect(await count(a.clinicId)).toBe(1);
   });
 
+  it("refuses every delivery outside cloud mode, even one that carries a valid signature", async () => {
+    const { a, phoneNumberId } = await clinicWithNumber();
+    const raw = JSON.stringify(payload(phoneNumberId, "wamid-simulator-mode"));
+    const jobs: Array<() => Promise<void>> = [];
+    process.env.WHATSAPP_MODE = "simulator";
+    try {
+      const unsigned = await receiveWebhook(
+        raw,
+        null,
+        (j) => jobs.push(j),
+        () => ({
+          llm: fakeLlm().llm,
+          sender: new SimulatorSender(),
+        }),
+      );
+      const signed = await receiveWebhook(
+        raw,
+        sign(raw),
+        (j) => jobs.push(j),
+        () => ({
+          llm: fakeLlm().llm,
+          sender: new SimulatorSender(),
+        }),
+      );
+      expect([unsigned.status, signed.status]).toEqual([403, 403]);
+    } finally {
+      process.env.WHATSAPP_MODE = "cloud";
+    }
+    expect(jobs).toHaveLength(0);
+    expect(await count(a.clinicId)).toBe(0);
+  });
+
   it("a message delivered twice is stored once and the agent runs once", async () => {
     const { a, phoneNumberId } = await clinicWithNumber();
     const raw = JSON.stringify(payload(phoneNumberId, "wamid-dup"));
