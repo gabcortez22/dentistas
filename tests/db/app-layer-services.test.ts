@@ -173,7 +173,7 @@ describe("simulator service", () => {
     const phone = "+51999111222";
     const add = (clinicId: string, direction: string, body: string, at: string, to = phone) =>
       pool.query(
-        "insert into whatsapp_messages (clinic_id, direction, phone_e164, body, created_at) values ($1, $2, $3, $4, $5)",
+        "insert into whatsapp_messages (clinic_id, direction, phone_e164, body, created_at, status) values ($1, $2, $3, $4, $5, 'processed')",
         [clinicId, direction, to, body, at],
       );
     await add(a.clinicId, "out", "Hola, ¿en qué te ayudo?", "2026-10-20T10:00:05Z");
@@ -195,7 +195,7 @@ describe("simulator service", () => {
     const a = await seedClinic();
     const stranger = await seedClinic();
     await pool.query(
-      "insert into whatsapp_messages (clinic_id, direction, phone_e164, body) values ($1, 'in', '+51977000333', 'privado')",
+      "insert into whatsapp_messages (clinic_id, direction, phone_e164, body, status) values ($1, 'in', '+51977000333', 'privado', 'processed')",
       [a.clinicId],
     );
     const forged = actorOf(a.clinicId, stranger.admin);
