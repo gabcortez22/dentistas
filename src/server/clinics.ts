@@ -104,6 +104,16 @@ export async function addMember(
   }
 }
 
+export async function getClinicName(actor: UserActor): Promise<string> {
+  return withTenant(actor.userId, async (client) => {
+    const { rows } = await client.query<{ name: string }>(
+      "select name from clinics where id = $1",
+      [actor.clinicId],
+    );
+    return rows[0]?.name ?? "";
+  });
+}
+
 export async function listMembers(
   actor: UserActor,
 ): Promise<Array<{ id: string; displayName: string; role: Role; active: boolean }>> {

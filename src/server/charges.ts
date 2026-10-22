@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import { z } from "zod";
-import { withService } from "@/lib/db";
+import { withService, withTenant } from "@/lib/db";
 import { ForbiddenError, type UserActor } from "@/server/session";
 
 export class OverpaymentError extends Error {
@@ -168,5 +168,26 @@ export async function patientBalance(
       paidCents: Number(rows[0].paid),
       balanceCents: Number(rows[0].balance),
     };
+  });
+}
+
+export type QuoteBalance = { quoteId: string; number: number; balanceCents: number };
+
+/** Accepted quotes of the patient that still owe money, oldest number first. */
+export async function listQuoteBalances(
+  actor: UserActor,
+  patientId: string,
+): Promise<QuoteBalance[]> {
+  return withTenant(actor.userId, async (client) => {
+    const { rows } = await client.query(
+      `select quote_id, number, balance_cents from quote_balances
+        where patient_id = $1 and clinic_id = $2 and balance_cents > 0 order by number`,
+      [patientId, actor.clinicId],
+    );
+    return rows.map((r) => ({
+      quoteId: r.quote_id,
+      number: Number(r.number),
+      balanceCents: Number(r.balance_cents),
+    }));
   });
 }

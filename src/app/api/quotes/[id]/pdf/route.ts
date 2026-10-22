@@ -1,5 +1,5 @@
-import { withService } from "@/lib/db";
 import { renderQuotePdf } from "@/lib/pdf/quote-document";
+import { getClinicName } from "@/server/clinics";
 import { getPatient } from "@/server/patients";
 import { getQuote } from "@/server/quotes";
 import { ForbiddenError, getSession, userActor } from "@/server/session";
@@ -20,13 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   if (!data) return Response.json({ error: "not_found" }, { status: 404 });
   const patient = await getPatient(actor, data.quote.patientId);
-  const clinicName = await withService(async (client) => {
-    const { rows } = await client.query<{ name: string }>(
-      "select name from clinics where id = $1",
-      [ctx.clinicId],
-    );
-    return rows[0]?.name ?? "";
-  });
+  const clinicName = await getClinicName(actor);
   const pdf = await renderQuotePdf({
     clinicName,
     patientName: data.quote.patientName,
