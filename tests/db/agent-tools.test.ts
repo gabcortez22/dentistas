@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { closePool as closeAppPool } from "@/lib/db";
 import { executeTool, TOOL_NAMES } from "@/server/agent-tools";
+import { bookAppointment } from "@/server/appointments";
 import { createPatient } from "@/server/patients";
 import { closePool, pool, seedClinic } from "./helpers";
 
@@ -83,6 +84,41 @@ describe("agent tools", () => {
     const again = await executeTool(ctx, "book_appointment", { proposalId: proposed.proposalId });
     expect(again.isError).toBe(true);
     expect(await count(a.clinicId)).toBe(1);
+  });
+
+  it("two simultaneous book calls for one proposal book once and the loser is told it was used", async () => {
+    const { a, ctx, userTurn, parse } = await setup();
+    const proposed = parse(await propose(ctx, a.dentist.membershipId));
+    await userTurn();
+    const call = () => executeTool(ctx, "book_appointment", { proposalId: proposed.proposalId });
+    const results = await Promise.all([call(), call()]);
+    expect(results.map((r) => r.isError).sort()).toEqual([false, true]);
+    expect(results.find((r) => r.isError)?.content).toContain("proposal already used");
+    expect(await count(a.clinicId)).toBe(1);
+  });
+
+  it("a proposal whose slot was taken meanwhile fails with a clear error and is not consumed", async () => {
+    const { a, patient, ctx, userTurn, parse } = await setup();
+    const proposed = parse(await propose(ctx, a.dentist.membershipId));
+    await userTurn();
+    await bookAppointment(
+      { kind: "service", clinicId: a.clinicId },
+      {
+        patientId: patient.id,
+        membershipId: a.dentist.membershipId,
+        startsAt: new Date(SLOT),
+        durationMinutes: 30,
+        source: "web",
+      },
+      { now: NOW },
+    );
+    const lost = await executeTool(ctx, "book_appointment", { proposalId: proposed.proposalId });
+    expect(lost.isError).toBe(true);
+    expect(lost.content).toContain("ya no está disponible");
+    const row = await pool.query("select consumed_at from appointment_proposals where id = $1", [
+      proposed.proposalId,
+    ]);
+    expect(row.rows[0].consumed_at).toBeNull();
   });
 
   it("an expired proposal cannot be booked", async () => {

@@ -293,6 +293,14 @@ export async function executeTool(
         if (!result.last_user_at || new Date(result.last_user_at) <= new Date(result.created_at)) {
           return fail("el paciente aún no ha confirmado: pide confirmación y espera su respuesta");
         }
+        // Claim the proposal before booking so two concurrent calls cannot both use it.
+        const claimed = await withService((client) =>
+          client.query(
+            "update appointment_proposals set consumed_at = now() where id = $1 and clinic_id = $2 and consumed_at is null",
+            [result.id, convo.clinicId],
+          ),
+        );
+        if (!claimed.rowCount) return fail("proposal already used");
         try {
           const appointment = await bookAppointment(
             service,
@@ -309,13 +317,14 @@ export async function executeTool(
             },
             { now },
           );
-          await withService((client) =>
-            client.query("update appointment_proposals set consumed_at = now() where id = $1", [
-              result.id,
-            ]),
-          );
           return ok({ booked: true, appointmentId: appointment.id });
         } catch (error) {
+          await withService((client) =>
+            client.query(
+              "update appointment_proposals set consumed_at = null where id = $1 and clinic_id = $2",
+              [result.id, convo.clinicId],
+            ),
+          );
           if (error instanceof SlotTakenError) return fail("ese horario ya no está disponible");
           throw error;
         }
