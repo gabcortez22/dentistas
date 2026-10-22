@@ -18,7 +18,8 @@ async function saveTurn(
 ) {
   await withService((client) =>
     client.query(
-      "insert into agent_turns (conversation_id, role, content, input_tokens, output_tokens) values ($1, $2, $3, $4, $5)",
+      `insert into agent_turns (conversation_id, clinic_id, role, content, input_tokens, output_tokens)
+       select id, clinic_id, $2, $3, $4, $5 from agent_conversations where id = $1`,
       [
         conversationId,
         role,
